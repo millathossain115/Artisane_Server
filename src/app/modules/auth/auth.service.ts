@@ -46,13 +46,13 @@ const registerUserIntoDB = async (
 
   const accessToken = createToken(
     jwtPayload,
-    config.jwt_access_secret,
+    config.jwt_access_secret as Secret,
     config.jwt_access_expires_in as NonNullable<SignOptions['expiresIn']>,
   );
 
   const refreshToken = createToken(
     jwtPayload,
-    config.jwt_refresh_secret,
+    config.jwt_refresh_secret as Secret,
     config.jwt_refresh_expires_in as NonNullable<SignOptions['expiresIn']>,
   );
 
@@ -93,13 +93,13 @@ const loginUser = async (payload: ILoginUser): Promise<IAuthResponse> => {
 
   const accessToken = createToken(
     jwtPayload,
-    config.jwt_access_secret,
+    config.jwt_access_secret as Secret,
     config.jwt_access_expires_in as NonNullable<SignOptions['expiresIn']>,
   );
 
   const refreshToken = createToken(
     jwtPayload,
-    config.jwt_refresh_secret,
+    config.jwt_refresh_secret as Secret,
     config.jwt_refresh_expires_in as NonNullable<SignOptions['expiresIn']>,
   );
 
