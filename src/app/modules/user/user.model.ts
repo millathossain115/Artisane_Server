@@ -15,6 +15,11 @@ const userSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
     },
+    password: {
+      type: String,
+      minlength: [6, 'Password must be at least 6 characters'],
+      select: false,
+    },
     phone: {
       type: String,
       trim: true,
