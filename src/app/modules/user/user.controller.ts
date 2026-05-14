@@ -5,6 +5,7 @@ import { UserServices } from './user.service.js';
 
 //create user controller
 const createUser = catchAsync(async (req, res) => {
+  console.log('User.create req.body: ', req.body);
   const result = await UserServices.createUserIntoDB(req.body);
 
   sendResponse(res, {
@@ -17,6 +18,7 @@ const createUser = catchAsync(async (req, res) => {
 
 //get all users controller
 const getAllUsers = catchAsync(async (_req, res) => {
+  console.log('User.getAll _req: ', _req);
   const result = await UserServices.getAllUsersFromDB();
 
   sendResponse(res, {
@@ -29,6 +31,7 @@ const getAllUsers = catchAsync(async (_req, res) => {
 
 //get single user controller
 const getSingleUser = catchAsync(async (req, res) => {
+  console.log('User.getSingleUser req: ', req);
   const { id } = req.params;
 
   if (!id || Array.isArray(id)) {
@@ -51,6 +54,7 @@ const getSingleUser = catchAsync(async (req, res) => {
 
 //delete single user controller
 const deleteSingleUser = catchAsync(async (req, res) => {
+  console.log('User.delete req: ', req);
   const { id } = req.params;
 
   if (!id || Array.isArray(id)) {

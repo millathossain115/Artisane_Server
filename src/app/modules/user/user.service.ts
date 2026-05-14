@@ -1,9 +1,16 @@
 import bcrypt from 'bcrypt';
 import config from '../../config/index.js';
+import AppError from '../../errors/appError.js';
 import type { IUser } from './user.interface.js';
 import { User } from './user.model.js';
 
 const createUserIntoDB = async (payload: IUser) => {
+  const existingUser = await User.findOne({ email: payload.email });
+
+  if (existingUser) {
+    throw new AppError(409, 'User already exists with this email');
+  }
+
   const createPayload = { ...payload };
 
   if (payload.password) {

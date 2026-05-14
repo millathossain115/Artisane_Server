@@ -5,6 +5,7 @@ import config from '../../config/index.js';
 import { USER_STATUS } from '../user/user.constant.js';
 import type { TUserStatus } from '../user/user.interface.js';
 import { User } from '../user/user.model.js';
+import { UserServices } from '../user/user.service.js';
 import type {
   IAuthResponse,
   IJwtPayload,
@@ -46,21 +47,7 @@ const buildAuthUserResponse = (user: {
 const registerUserIntoDB = async (
   payload: IRegisterUser,
 ): Promise<IAuthResponse> => {
-  const existingUser = await User.findOne({ email: payload.email });
-
-  if (existingUser) {
-    throw new AppError(409, 'User already exists with this email');
-  }
-
-  const hashedPassword = await bcrypt.hash(
-    payload.password,
-    Number(config.bcrypt_salt_rounds) || 10,
-  );
-
-  const createdUser = await User.create({
-    ...payload,
-    password: hashedPassword,
-  });
+  const createdUser = await UserServices.createUserIntoDB(payload);
 
   const jwtPayload: IJwtPayload = {
     userId: createdUser._id.toString(),

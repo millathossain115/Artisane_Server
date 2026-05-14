@@ -3,6 +3,7 @@ import sendResponse from '../../utils/sendResponse.js';
 import { AuthServices } from './auth.service.js';
 
 const registerUser = catchAsync(async (req, res) => {
+  console.log('Auth.controller req.body: ', req.body);
   const result = await AuthServices.registerUserIntoDB(req.body);
 
   sendResponse(res, {
@@ -14,6 +15,7 @@ const registerUser = catchAsync(async (req, res) => {
 });
 
 const loginUser = catchAsync(async (req, res) => {
+  console.log('Auth.login req.body: ', req.body);
   const result = await AuthServices.loginUser(req.body);
 
   sendResponse(res, {
@@ -25,6 +27,7 @@ const loginUser = catchAsync(async (req, res) => {
 });
 
 const getMe = catchAsync(async (req, res) => {
+  console.log('Auth.getMe req.user: ', req.user);
   const result = await AuthServices.getMe(req.user.userId);
 
   sendResponse(res, {
