@@ -1,9 +1,14 @@
-import { USER_ROLE } from './user.constant.js';
+import { USER_ROLE, USER_STATUS } from './user.constant.js';
+
+export type TUserRole = keyof typeof USER_ROLE;
+export type TUserStatus = keyof typeof USER_STATUS;
 
 export interface IUser {
   name: string;
   email: string;
   password?: string;
   phone?: string;
-  role?: keyof typeof USER_ROLE;
+  role?: TUserRole;
+  status?: TUserStatus;
+  isDeleted?: boolean;
 }

@@ -1,6 +1,6 @@
-import { USER_ROLE } from '../user/user.constant.js';
+import type { TUserRole, TUserStatus } from '../user/user.interface.js';
 
-export type TUserRole = keyof typeof USER_ROLE;
+export type { TUserRole, TUserStatus };
 
 export interface IRegisterUser {
   name: string;
@@ -35,5 +35,7 @@ export interface IAuthResponse {
     email: string;
     phone?: string;
     role?: TUserRole;
+    status?: TUserStatus;
+    isDeleted?: boolean;
   };
 }

@@ -1,4 +1,4 @@
-import { USER_ROLE } from './user.constant.js';
+import { USER_ROLE, USER_STATUS } from './user.constant.js';
 import { z } from 'zod';
 
 const createUserValidationSchema = z.object({
@@ -11,6 +11,10 @@ const createUserValidationSchema = z.object({
     .email({ message: 'Please provide a valid email address' })
     .trim()
     .toLowerCase(),
+  password: z
+    .string()
+    .min(6, { message: 'Password must be at least 6 characters' })
+    .max(100, { message: 'Password cannot exceed 100 characters' }),
   phone: z
     .string()
     .trim()
@@ -18,6 +22,8 @@ const createUserValidationSchema = z.object({
     .max(20, { message: 'Phone number cannot exceed 20 characters' })
     .optional(),
   role: z.enum(Object.keys(USER_ROLE) as [string, ...string[]]).optional(),
+  status: z.enum(Object.keys(USER_STATUS) as [string, ...string[]]).optional(),
+  isDeleted: z.boolean().optional(),
 });
 
 export const UserValidations = {

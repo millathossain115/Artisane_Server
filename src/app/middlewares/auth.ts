@@ -3,31 +3,51 @@ import jwt from 'jsonwebtoken';
 import config from '../config/index.js';
 import AppError from '../errors/appError.js';
 import catchAsync from '../utils/catchAsync.js';
-import type { IJwtPayload, TUserRole } from '../modules/auth/auth.interface.js';
+import type { IJwtPayload } from '../modules/auth/auth.interface.js';
+import { User } from '../modules/user/user.model.js';
+import { USER_STATUS } from '../modules/user/user.constant.js';
+import type { TUserRole } from '../modules/user/user.interface.js';
 
 const auth = (...requiredRoles: TUserRole[]) => {
   return catchAsync(async (req, res, next) => {
-    const token = req.headers.authorization;
+    const authorizationHeader = req.headers.authorization;
 
-    // checking if the token is missing
-    if (!token) {
+    if (!authorizationHeader) {
       throw new AppError(401, 'You are not authorized!');
     }
 
-    // checking if the given token is valid
-    const decoded = jwt.verify(
-      token,
-      config.jwt_access_secret as Secret,
-    ) as IJwtPayload;
+    const [scheme, token] = authorizationHeader.split(' ');
 
-    const { role } = decoded;
-
-    // check if the user is authorized or not
-    if (requiredRoles.length && !requiredRoles.includes(role)) {
+    if (scheme !== 'Bearer' || !token) {
       throw new AppError(401, 'You are not authorized!');
     }
 
-    req.user = decoded;
+    let decoded: IJwtPayload;
+
+    try {
+      decoded = jwt.verify(
+        token,
+        config.jwt_access_secret as Secret,
+      ) as IJwtPayload;
+    } catch {
+      throw new AppError(401, 'You are not authorized!');
+    }
+
+    const user = await User.findById(decoded.userId);
+
+    if (!user || user.isDeleted || user.status === USER_STATUS.blocked) {
+      throw new AppError(401, 'You are not authorized!');
+    }
+
+    if (requiredRoles.length && !requiredRoles.includes(user.role || 'user')) {
+      throw new AppError(401, 'You are not authorized!');
+    }
+
+    req.user = {
+      ...decoded,
+      email: user.email,
+      role: user.role || 'user',
+    };
     next();
   });
 };

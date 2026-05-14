@@ -19,10 +19,6 @@ router.post(
   AuthControllers.loginUser,
 );
 
-router.get(
-  '/me',
-  auth(USER_ROLE.admin, USER_ROLE.user),
-  AuthControllers.getMe,
-);
+router.get('/me', auth(USER_ROLE.admin, USER_ROLE.user), AuthControllers.getMe);
 
 export const AuthRoutes = router;

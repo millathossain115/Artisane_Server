@@ -2,6 +2,8 @@ import bcrypt from 'bcrypt';
 import jwt, { type Secret, type SignOptions } from 'jsonwebtoken';
 import AppError from '../../errors/appError.js';
 import config from '../../config/index.js';
+import { USER_STATUS } from '../user/user.constant.js';
+import type { TUserStatus } from '../user/user.interface.js';
 import { User } from '../user/user.model.js';
 import type {
   IAuthResponse,
@@ -17,6 +19,28 @@ const createToken = (
 ) => {
   const jwtOptions: SignOptions = { expiresIn };
   return jwt.sign(jwtPayload, secret, jwtOptions);
+};
+
+const buildAuthUserResponse = (user: {
+  _id: { toString(): string };
+  name: string;
+  email: string;
+  phone?: string;
+  role?: IJwtPayload['role'];
+  status?: TUserStatus;
+  isDeleted?: boolean;
+}) => {
+  return {
+    _id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    ...(user.phone ? { phone: user.phone } : {}),
+    ...(user.role ? { role: user.role } : {}),
+    ...(user.status ? { status: user.status } : {}),
+    ...(typeof user.isDeleted === 'boolean'
+      ? { isDeleted: user.isDeleted }
+      : {}),
+  };
 };
 
 const registerUserIntoDB = async (
@@ -59,13 +83,7 @@ const registerUserIntoDB = async (
   return {
     accessToken,
     refreshToken,
-    user: {
-      _id: createdUser._id.toString(),
-      name: createdUser.name,
-      email: createdUser.email,
-      ...(createdUser.phone ? { phone: createdUser.phone } : {}),
-      ...(createdUser.role ? { role: createdUser.role } : {}),
-    },
+    user: buildAuthUserResponse(createdUser),
   };
 };
 
@@ -74,6 +92,10 @@ const loginUser = async (payload: ILoginUser): Promise<IAuthResponse> => {
 
   if (!user || !user.password) {
     throw new AppError(404, 'User not found');
+  }
+
+  if (user.isDeleted || user.status === USER_STATUS.blocked) {
+    throw new AppError(401, 'You are not authorized!');
   }
 
   const isPasswordMatched = await bcrypt.compare(
@@ -106,13 +128,7 @@ const loginUser = async (payload: ILoginUser): Promise<IAuthResponse> => {
   return {
     accessToken,
     refreshToken,
-    user: {
-      _id: user._id.toString(),
-      name: user.name,
-      email: user.email,
-      ...(user.phone ? { phone: user.phone } : {}),
-      ...(user.role ? { role: user.role } : {}),
-    },
+    user: buildAuthUserResponse(user),
   };
 };
 
@@ -121,6 +137,10 @@ const getMe = async (userId: string) => {
 
   if (!user) {
     throw new AppError(404, 'User not found');
+  }
+
+  if (user.isDeleted || user.status === USER_STATUS.blocked) {
+    throw new AppError(401, 'You are not authorized!');
   }
 
   return user;

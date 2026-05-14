@@ -1,4 +1,4 @@
-import { USER_ROLE } from './user.constant.js';
+import { USER_ROLE, USER_STATUS } from './user.constant.js';
 import { Schema, model } from 'mongoose';
 import type { IUser } from './user.interface.js';
 
@@ -30,9 +30,30 @@ const userSchema = new Schema<IUser>(
       enum: Object.keys(USER_ROLE),
       default: USER_ROLE.user,
     },
+    status: {
+      type: String,
+      enum: Object.keys(USER_STATUS),
+      default: USER_STATUS.active,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
+    toJSON: {
+      transform: (_doc, ret) => {
+        delete ret.password;
+        return ret;
+      },
+    },
+    toObject: {
+      transform: (_doc, ret) => {
+        delete ret.password;
+        return ret;
+      },
+    },
   },
 );
 
