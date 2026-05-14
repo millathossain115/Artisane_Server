@@ -22,7 +22,7 @@ const auth = (...requiredRoles: TUserRole[]) => {
 
     const { role } = decoded;
 
-    // check if the user is authorized
+    // check if the user is authorized or not
     if (requiredRoles.length && !requiredRoles.includes(role)) {
       throw new AppError(401, 'You are not authorized!');
     }

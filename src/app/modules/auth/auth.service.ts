@@ -116,7 +116,18 @@ const loginUser = async (payload: ILoginUser): Promise<IAuthResponse> => {
   };
 };
 
+const getMe = async (userId: string) => {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  return user;
+};
+
 export const AuthServices = {
   registerUserIntoDB,
   loginUser,
+  getMe,
 };

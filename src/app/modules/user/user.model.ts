@@ -1,3 +1,4 @@
+import { USER_ROLE } from './user.constant.js';
 import { Schema, model } from 'mongoose';
 import type { IUser } from './user.interface.js';
 
@@ -26,8 +27,8 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: Object.keys(USER_ROLE),
+      default: USER_ROLE.user,
     },
   },
   {

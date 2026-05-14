@@ -1,3 +1,4 @@
+import { USER_ROLE } from '../user/user.constant.js';
 import { z } from 'zod';
 
 const registerUserValidationSchema = z.object({
@@ -21,7 +22,7 @@ const registerUserValidationSchema = z.object({
     .min(7, { message: 'Phone number must be at least 7 characters' })
     .max(20, { message: 'Phone number cannot exceed 20 characters' })
     .optional(),
-  role: z.enum(['user', 'admin']).optional(),
+  role: z.enum(Object.keys(USER_ROLE) as [string, ...string[]]).optional(),
 });
 
 const loginUserValidationSchema = z.object({

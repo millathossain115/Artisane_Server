@@ -1,4 +1,6 @@
-export type TUserRole = 'admin' | 'user';
+import { USER_ROLE } from '../user/user.constant.js';
+
+export type TUserRole = keyof typeof USER_ROLE;
 
 export interface IRegisterUser {
   name: string;

@@ -1,7 +1,9 @@
+import { USER_ROLE } from './user.constant.js';
+
 export interface IUser {
   name: string;
   email: string;
   password?: string;
   phone?: string;
-  role?: 'user' | 'admin';
+  role?: keyof typeof USER_ROLE;
 }
