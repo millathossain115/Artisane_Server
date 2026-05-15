@@ -13,3 +13,18 @@ export const PAYMENT_STATUS = {
   failed: 'failed',
   refunded: 'refunded',
 } as const;
+
+export const ORDER_STATUS_TRANSITIONS = {
+  pending: [ORDER_STATUS.confirmed, ORDER_STATUS.cancelled],
+  confirmed: [ORDER_STATUS.processing, ORDER_STATUS.cancelled],
+  processing: [ORDER_STATUS.shipped, ORDER_STATUS.cancelled],
+  shipped: [ORDER_STATUS.delivered],
+  delivered: [],
+  cancelled: [],
+} as const;
+
+export const CANCELLABLE_ORDER_STATUSES = [
+  ORDER_STATUS.pending,
+  ORDER_STATUS.confirmed,
+  ORDER_STATUS.processing,
+] as const;

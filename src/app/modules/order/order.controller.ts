@@ -81,6 +81,31 @@ const updateOrderStatus = catchAsync(async (req, res) => {
   });
 });
 
+const cancelOrder = catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    throw new AppError(400, 'Order id is required');
+  }
+
+  const result = await OrderServices.cancelOrderIntoDB(
+    id,
+    req.user.userId,
+    req.user.role,
+  );
+
+  if (!result) {
+    throw new AppError(404, 'Order not found');
+  }
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Order cancelled successfully',
+    data: result,
+  });
+});
+
 const deleteSingleOrder = catchAsync(async (req, res) => {
   const { id } = req.params;
 
@@ -108,5 +133,6 @@ export const OrderControllers = {
   getAllOrders,
   getSingleOrder,
   updateOrderStatus,
+  cancelOrder,
   deleteSingleOrder,
 };

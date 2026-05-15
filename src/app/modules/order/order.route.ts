@@ -26,6 +26,11 @@ router.patch(
   validateRequest(OrderValidations.updateOrderStatusValidationSchema),
   OrderControllers.updateOrderStatus,
 );
+router.patch(
+  '/:id/cancel',
+  auth(USER_ROLE.admin, USER_ROLE.user),
+  OrderControllers.cancelOrder,
+);
 router.delete(
   '/:id',
   auth(USER_ROLE.admin),

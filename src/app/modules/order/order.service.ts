@@ -6,6 +6,12 @@ import type {
   IOrder,
   IOrderItem,
 } from './order.interface.js';
+import {
+  CANCELLABLE_ORDER_STATUSES,
+  ORDER_STATUS,
+  ORDER_STATUS_TRANSITIONS,
+  PAYMENT_STATUS,
+} from './order.constant.js';
 import { Order } from './order.model.js';
 
 const populateOrderQuery = () =>
@@ -31,6 +37,19 @@ const populateSingleOrderQuery = (id: string) =>
         select: 'name slug',
       },
     });
+
+const restoreOrderStock = async (items: IOrderItem[]) => {
+  for (const item of items) {
+    const product = await Product.findById(item.product);
+
+    if (!product || product.isDeleted) {
+      continue;
+    }
+
+    product.stock += item.quantity;
+    await product.save();
+  }
+};
 
 const createOrderIntoDB = async (
   userId: string,
@@ -138,9 +157,78 @@ const updateOrderStatusIntoDB = async (
   id: string,
   payload: Partial<Pick<IOrder, 'orderStatus' | 'paymentStatus'>>,
 ) => {
+  const order = await Order.findOne({ _id: id, isDeleted: false });
+
+  if (!order) {
+    return null;
+  }
+
+  if (payload.orderStatus) {
+    if (payload.orderStatus === ORDER_STATUS.cancelled) {
+      throw new AppError(400, 'Use the cancel order route to cancel an order');
+    }
+
+    const currentStatus = order.orderStatus || ORDER_STATUS.pending;
+    const allowedTransitions = [
+      ...ORDER_STATUS_TRANSITIONS[currentStatus],
+    ] as string[];
+
+    if (!allowedTransitions.includes(payload.orderStatus)) {
+      throw new AppError(
+        400,
+        `Invalid order status transition from ${currentStatus} to ${payload.orderStatus}`,
+      );
+    }
+  }
+
   const result = await Order.findOneAndUpdate(
     { _id: id, isDeleted: false },
     payload,
+    { new: true, runValidators: true },
+  )
+    .populate('user', 'name email role')
+    .populate({
+      path: 'items.product',
+      select: 'name slug price category',
+      populate: {
+        path: 'category',
+        select: 'name slug',
+      },
+    });
+
+  return result;
+};
+
+const cancelOrderIntoDB = async (id: string, userId: string, userRole: string) => {
+  const order = await Order.findOne({ _id: id, isDeleted: false });
+
+  if (!order) {
+    return null;
+  }
+
+  if (userRole !== 'admin' && order.user.toString() !== userId) {
+    throw new AppError(403, 'You are not allowed to cancel this order');
+  }
+
+  const currentStatus = order.orderStatus || ORDER_STATUS.pending;
+
+  if (!(CANCELLABLE_ORDER_STATUSES as readonly string[]).includes(currentStatus)) {
+    throw new AppError(400, `Order cannot be cancelled when status is ${currentStatus}`);
+  }
+
+  await restoreOrderStock(order.items);
+
+  const nextPaymentStatus =
+    order.paymentStatus === PAYMENT_STATUS.paid
+      ? PAYMENT_STATUS.refunded
+      : order.paymentStatus;
+
+  const result = await Order.findOneAndUpdate(
+    { _id: id, isDeleted: false },
+    {
+      orderStatus: ORDER_STATUS.cancelled,
+      paymentStatus: nextPaymentStatus,
+    },
     { new: true, runValidators: true },
   )
     .populate('user', 'name email role')
@@ -181,5 +269,6 @@ export const OrderServices = {
   getAllOrdersFromDB,
   getSingleOrderFromDB,
   updateOrderStatusIntoDB,
+  cancelOrderIntoDB,
   deleteSingleOrderFromDB,
 };
