@@ -32,6 +32,30 @@ const createCategoryValidationSchema = z.object({
   isDeleted: z.boolean().optional(),
 });
 
+const updateCategoryValidationSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, { message: 'Category name cannot be empty' })
+    .max(100, { message: 'Category name cannot exceed 100 characters' })
+    .optional(),
+  slug: z
+    .string()
+    .trim()
+    .min(1, { message: 'Category slug cannot be empty' })
+    .max(100, { message: 'Category slug cannot exceed 100 characters' })
+    .transform((value: string) => value.toLowerCase())
+    .optional(),
+  description: z
+    .string()
+    .trim()
+    .max(500, { message: 'Description cannot exceed 500 characters' })
+    .optional(),
+  image: optionalImageUrlSchema,
+  isDeleted: z.boolean().optional(),
+});
+
 export const CategoryValidations = {
   createCategoryValidationSchema,
+  updateCategoryValidationSchema,
 };
