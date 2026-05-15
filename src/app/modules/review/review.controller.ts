@@ -4,7 +4,10 @@ import sendResponse from '../../utils/sendResponse.js';
 import { ReviewServices } from './review.service.js';
 
 const createReview = catchAsync(async (req, res) => {
-  const result = await ReviewServices.createReviewIntoDB(req.user.userId, req.body);
+  const result = await ReviewServices.createReviewIntoDB(
+    req.user.userId,
+    req.body,
+  );
 
   sendResponse(res, {
     statusCode: 201,
