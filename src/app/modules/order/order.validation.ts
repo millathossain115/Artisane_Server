@@ -30,19 +30,22 @@ const createOrderValidationSchema = z.object({
     .optional(),
 });
 
-const updateOrderStatusValidationSchema = z.object({
-  orderStatus: z
-    .enum(Object.keys(ORDER_STATUS) as [string, ...string[]])
-    .optional(),
-  paymentStatus: z
-    .enum(Object.keys(PAYMENT_STATUS) as [string, ...string[]])
-    .optional(),
-}).refine(
-  (value) => value.orderStatus !== undefined || value.paymentStatus !== undefined,
-  {
-    message: 'At least one of orderStatus or paymentStatus is required',
-  },
-);
+const updateOrderStatusValidationSchema = z
+  .object({
+    orderStatus: z
+      .enum(Object.keys(ORDER_STATUS) as [string, ...string[]])
+      .optional(),
+    paymentStatus: z
+      .enum(Object.keys(PAYMENT_STATUS) as [string, ...string[]])
+      .optional(),
+  })
+  .refine(
+    (value) =>
+      value.orderStatus !== undefined || value.paymentStatus !== undefined,
+    {
+      message: 'At least one of orderStatus or paymentStatus is required',
+    },
+  );
 
 export const OrderValidations = {
   createOrderValidationSchema,

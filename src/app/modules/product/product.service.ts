@@ -1,8 +1,12 @@
-import { Types } from 'mongoose';
 import AppError from '../../errors/appError.js';
+import {
+  buildPaginationMeta,
+  calculatePagination,
+} from '../../utils/pagination.js';
 import { Category } from '../category/category.model.js';
 import type { IProduct } from './product.interface.js';
 import { Product } from './product.model.js';
+import { buildProductAggregationPipeline } from './product.queryBuilder.js';
 
 const createProductIntoDB = async (payload: IProduct) => {
   const existingProduct = await Product.findOne({
@@ -33,125 +37,17 @@ const createProductIntoDB = async (payload: IProduct) => {
 };
 
 const getAllProductsFromDB = async (query: Record<string, unknown>) => {
-  const searchTerm =
-    typeof query.searchTerm === 'string' ? query.searchTerm.trim() : '';
-  const category =
-    typeof query.category === 'string' ? query.category.trim() : '';
-  const minPrice =
-    typeof query.minPrice === 'string' ? Number(query.minPrice) : undefined;
-  const maxPrice =
-    typeof query.maxPrice === 'string' ? Number(query.maxPrice) : undefined;
-  const sortBy = typeof query.sortBy === 'string' ? query.sortBy : 'newest';
-  const sortOrder =
-    typeof query.sortOrder === 'string' ? query.sortOrder : 'desc';
+  const { page, limit, skip } = calculatePagination(query);
+  const [aggregationResult] = await Product.aggregate(
+    buildProductAggregationPipeline(query, skip, limit),
+  );
 
-  const matchStage: Record<string, unknown> = {
-    isDeleted: false,
+  const total = aggregationResult?.meta?.[0]?.total || 0;
+
+  return {
+    meta: buildPaginationMeta(page, limit, total),
+    result: aggregationResult?.data || [],
   };
-
-  if (searchTerm) {
-    matchStage.name = {
-      $regex: searchTerm,
-      $options: 'i',
-    };
-  }
-
-  if (category && Types.ObjectId.isValid(category)) {
-    matchStage.category = new Types.ObjectId(category);
-  }
-
-  if (
-    typeof minPrice === 'number' &&
-    !Number.isNaN(minPrice) &&
-    typeof maxPrice === 'number' &&
-    !Number.isNaN(maxPrice)
-  ) {
-    matchStage.price = { $gte: minPrice, $lte: maxPrice };
-  } else if (typeof minPrice === 'number' && !Number.isNaN(minPrice)) {
-    matchStage.price = { $gte: minPrice };
-  } else if (typeof maxPrice === 'number' && !Number.isNaN(maxPrice)) {
-    matchStage.price = { $lte: maxPrice };
-  }
-
-  const sortStage: Record<string, 1 | -1> = { createdAt: -1 };
-
-  if (sortBy === 'price') {
-    sortStage.price = sortOrder === 'asc' ? 1 : -1;
-    delete sortStage.createdAt;
-  }
-
-  if (sortBy === 'rating') {
-    sortStage.averageRating = sortOrder === 'asc' ? 1 : -1;
-    delete sortStage.createdAt;
-  }
-
-  if (sortBy === 'newest') {
-    sortStage.createdAt = sortOrder === 'asc' ? 1 : -1;
-  }
-
-  const result = await Product.aggregate([
-    {
-      $match: matchStage,
-    },
-    {
-      $lookup: {
-        from: 'categories',
-        localField: 'category',
-        foreignField: '_id',
-        as: 'category',
-      },
-    },
-    {
-      $unwind: {
-        path: '$category',
-        preserveNullAndEmptyArrays: true,
-      },
-    },
-    {
-      $lookup: {
-        from: 'reviews',
-        let: { productId: '$_id' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ['$product', '$$productId'] },
-                  { $eq: ['$isDeleted', false] },
-                ],
-              },
-            },
-          },
-        ],
-        as: 'reviews',
-      },
-    },
-    {
-      $addFields: {
-        averageRating: {
-          $ifNull: [{ $avg: '$reviews.rating' }, 0],
-        },
-        reviewCount: {
-          $size: '$reviews',
-        },
-        category: {
-          _id: '$category._id',
-          name: '$category.name',
-          slug: '$category.slug',
-        },
-      },
-    },
-    {
-      $project: {
-        reviews: 0,
-      },
-    },
-    {
-      $sort: sortStage,
-    },
-  ]);
-
-  return result;
 };
 
 const getSingleProductFromDB = async (id: string) => {

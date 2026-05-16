@@ -1,42 +1,33 @@
+import { Query } from 'mongoose';
 import AppError from '../../errors/appError.js';
+import {
+  buildPaginationMeta,
+  calculatePagination,
+} from '../../utils/pagination.js';
 import { Product } from '../product/product.model.js';
 import { User } from '../user/user.model.js';
-import type {
-  ICreateOrderPayload,
-  IOrder,
-  IOrderItem,
-} from './order.interface.js';
 import {
   CANCELLABLE_ORDER_STATUSES,
   ORDER_STATUS,
   ORDER_STATUS_TRANSITIONS,
   PAYMENT_STATUS,
 } from './order.constant.js';
+import type {
+  ICreateOrderPayload,
+  IOrder,
+  IOrderItem,
+} from './order.interface.js';
 import { Order } from './order.model.js';
 
-const populateOrderQuery = () =>
-  Order.find()
-    .populate('user', 'name email role')
-    .populate({
-      path: 'items.product',
-      select: 'name slug price category',
-      populate: {
-        path: 'category',
-        select: 'name slug',
-      },
-    });
-
-const populateSingleOrderQuery = (id: string) =>
-  Order.findById(id)
-    .populate('user', 'name email role')
-    .populate({
-      path: 'items.product',
-      select: 'name slug price category',
-      populate: {
-        path: 'category',
-        select: 'name slug',
-      },
-    });
+const populateOrder = <T>(query: Query<T, IOrder>) =>
+  query.populate('user', 'name email role').populate({
+    path: 'items.product',
+    select: 'name slug price category',
+    populate: {
+      path: 'category',
+      select: 'name slug',
+    },
+  });
 
 const restoreOrderStock = async (items: IOrderItem[]) => {
   for (const item of items) {
@@ -113,42 +104,54 @@ const createOrderIntoDB = async (
   };
 
   const createdOrder = await Order.create(orderPayload);
-  const result = await populateSingleOrderQuery(createdOrder._id.toString());
+  const result = await populateOrder(Order.findById(createdOrder._id));
 
   return result;
 };
 
-const getMyOrdersFromDB = async (userId: string) => {
-  const result = await Order.find({ user: userId, isDeleted: false })
-    .populate('user', 'name email role')
-    .populate({
-      path: 'items.product',
-      select: 'name slug price category',
-      populate: {
-        path: 'category',
-        select: 'name slug',
-      },
-    });
+const getMyOrdersFromDB = async (
+  userId: string,
+  query: Record<string, unknown>,
+) => {
+  const { page, limit, skip } = calculatePagination(query);
+  const [total, result] = await Promise.all([
+    Order.countDocuments({ user: userId, isDeleted: false }),
+    populateOrder(
+      Order.find({ user: userId, isDeleted: false })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+    ),
+  ]);
 
-  return result;
+  return {
+    meta: buildPaginationMeta(page, limit, total),
+    result,
+  };
 };
 
-const getAllOrdersFromDB = async () => {
-  const result = await populateOrderQuery().find({ isDeleted: false });
-  return result;
+const getAllOrdersFromDB = async (query: Record<string, unknown>) => {
+  const { page, limit, skip } = calculatePagination(query);
+  const [total, result] = await Promise.all([
+    Order.countDocuments({ isDeleted: false }),
+    populateOrder(
+      Order.find({ isDeleted: false })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+    ),
+  ]);
+
+  return {
+    meta: buildPaginationMeta(page, limit, total),
+    result,
+  };
 };
 
 const getSingleOrderFromDB = async (id: string) => {
-  const result = await Order.findOne({ _id: id, isDeleted: false })
-    .populate('user', 'name email role')
-    .populate({
-      path: 'items.product',
-      select: 'name slug price category',
-      populate: {
-        path: 'category',
-        select: 'name slug',
-      },
-    });
+  const result = await populateOrder(
+    Order.findOne({ _id: id, isDeleted: false }),
+  );
 
   return result;
 };
@@ -181,25 +184,21 @@ const updateOrderStatusIntoDB = async (
     }
   }
 
-  const result = await Order.findOneAndUpdate(
-    { _id: id, isDeleted: false },
-    payload,
-    { new: true, runValidators: true },
-  )
-    .populate('user', 'name email role')
-    .populate({
-      path: 'items.product',
-      select: 'name slug price category',
-      populate: {
-        path: 'category',
-        select: 'name slug',
-      },
-    });
+  const result = await populateOrder(
+    Order.findOneAndUpdate({ _id: id, isDeleted: false }, payload, {
+      new: true,
+      runValidators: true,
+    }),
+  );
 
   return result;
 };
 
-const cancelOrderIntoDB = async (id: string, userId: string, userRole: string) => {
+const cancelOrderIntoDB = async (
+  id: string,
+  userId: string,
+  userRole: string,
+) => {
   const order = await Order.findOne({ _id: id, isDeleted: false });
 
   if (!order) {
@@ -212,8 +211,13 @@ const cancelOrderIntoDB = async (id: string, userId: string, userRole: string) =
 
   const currentStatus = order.orderStatus || ORDER_STATUS.pending;
 
-  if (!(CANCELLABLE_ORDER_STATUSES as readonly string[]).includes(currentStatus)) {
-    throw new AppError(400, `Order cannot be cancelled when status is ${currentStatus}`);
+  if (
+    !(CANCELLABLE_ORDER_STATUSES as readonly string[]).includes(currentStatus)
+  ) {
+    throw new AppError(
+      400,
+      `Order cannot be cancelled when status is ${currentStatus}`,
+    );
   }
 
   await restoreOrderStock(order.items);
@@ -223,42 +227,28 @@ const cancelOrderIntoDB = async (id: string, userId: string, userRole: string) =
       ? PAYMENT_STATUS.refunded
       : order.paymentStatus;
 
-  const result = await Order.findOneAndUpdate(
-    { _id: id, isDeleted: false },
-    {
-      orderStatus: ORDER_STATUS.cancelled,
-      paymentStatus: nextPaymentStatus,
-    },
-    { new: true, runValidators: true },
-  )
-    .populate('user', 'name email role')
-    .populate({
-      path: 'items.product',
-      select: 'name slug price category',
-      populate: {
-        path: 'category',
-        select: 'name slug',
+  const result = await populateOrder(
+    Order.findOneAndUpdate(
+      { _id: id, isDeleted: false },
+      {
+        orderStatus: ORDER_STATUS.cancelled,
+        paymentStatus: nextPaymentStatus,
       },
-    });
+      { new: true, runValidators: true },
+    ),
+  );
 
   return result;
 };
 
 const deleteSingleOrderFromDB = async (id: string) => {
-  const result = await Order.findOneAndUpdate(
-    { _id: id, isDeleted: false },
-    { isDeleted: true },
-    { new: true },
-  )
-    .populate('user', 'name email role')
-    .populate({
-      path: 'items.product',
-      select: 'name slug price category',
-      populate: {
-        path: 'category',
-        select: 'name slug',
-      },
-    });
+  const result = await populateOrder(
+    Order.findOneAndUpdate(
+      { _id: id, isDeleted: false },
+      { isDeleted: true },
+      { new: true },
+    ),
+  );
 
   return result;
 };

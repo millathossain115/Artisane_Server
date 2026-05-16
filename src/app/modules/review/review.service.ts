@@ -1,4 +1,8 @@
 import AppError from '../../errors/appError.js';
+import {
+  buildPaginationMeta,
+  calculatePagination,
+} from '../../utils/pagination.js';
 import { Product } from '../product/product.model.js';
 import { User } from '../user/user.model.js';
 import type {
@@ -62,20 +66,43 @@ const createReviewIntoDB = async (
   return result;
 };
 
-const getAllReviewsFromDB = async () => {
-  const result = await Review.find({ isDeleted: false })
-    .populate(reviewPopulate[0])
-    .populate(reviewPopulate[1]);
+const getAllReviewsFromDB = async (query: Record<string, unknown>) => {
+  const { page, limit, skip } = calculatePagination(query);
+  const [total, result] = await Promise.all([
+    Review.countDocuments({ isDeleted: false }),
+    Review.find({ isDeleted: false })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate(reviewPopulate[0])
+      .populate(reviewPopulate[1]),
+  ]);
 
-  return result;
+  return {
+    meta: buildPaginationMeta(page, limit, total),
+    result,
+  };
 };
 
-const getReviewsByProductFromDB = async (productId: string) => {
-  const result = await Review.find({ product: productId, isDeleted: false })
-    .populate(reviewPopulate[0])
-    .populate(reviewPopulate[1]);
+const getReviewsByProductFromDB = async (
+  productId: string,
+  query: Record<string, unknown>,
+) => {
+  const { page, limit, skip } = calculatePagination(query);
+  const [total, result] = await Promise.all([
+    Review.countDocuments({ product: productId, isDeleted: false }),
+    Review.find({ product: productId, isDeleted: false })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate(reviewPopulate[0])
+      .populate(reviewPopulate[1]),
+  ]);
 
-  return result;
+  return {
+    meta: buildPaginationMeta(page, limit, total),
+    result,
+  };
 };
 
 const getSingleReviewFromDB = async (id: string) => {

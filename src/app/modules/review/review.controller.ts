@@ -17,14 +17,15 @@ const createReview = catchAsync(async (req, res) => {
   });
 });
 
-const getAllReviews = catchAsync(async (_req, res) => {
-  const result = await ReviewServices.getAllReviewsFromDB();
+const getAllReviews = catchAsync(async (req, res) => {
+  const result = await ReviewServices.getAllReviewsFromDB(req.query);
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'Reviews retrieved successfully',
-    data: result,
+    meta: { ...result.meta },
+    data: result.result,
   });
 });
 
@@ -35,13 +36,17 @@ const getReviewsByProduct = catchAsync(async (req, res) => {
     throw new AppError(400, 'Product id is required');
   }
 
-  const result = await ReviewServices.getReviewsByProductFromDB(productId);
+  const result = await ReviewServices.getReviewsByProductFromDB(
+    productId,
+    req.query,
+  );
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'Product reviews retrieved successfully',
-    data: result,
+    meta: { ...result.meta },
+    data: result.result,
   });
 });
 

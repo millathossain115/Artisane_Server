@@ -17,15 +17,16 @@ const createUser = catchAsync(async (req, res) => {
 });
 
 //get all users controller
-const getAllUsers = catchAsync(async (_req, res) => {
-  console.log('User.getAll _req: ', _req);
-  const result = await UserServices.getAllUsersFromDB();
+const getAllUsers = catchAsync(async (req, res) => {
+  console.log('User.getAll req.query: ', req.query);
+  const result = await UserServices.getAllUsersFromDB(req.query);
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'Users retrieved successfully',
-    data: result,
+    meta: { ...result.meta },
+    data: result.result,
   });
 });
 

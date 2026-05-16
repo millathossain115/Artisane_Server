@@ -18,24 +18,29 @@ const createOrder = catchAsync(async (req, res) => {
 });
 
 const getMyOrders = catchAsync(async (req, res) => {
-  const result = await OrderServices.getMyOrdersFromDB(req.user.userId);
+  const result = await OrderServices.getMyOrdersFromDB(
+    req.user.userId,
+    req.query,
+  );
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'My orders retrieved successfully',
-    data: result,
+    meta: { ...result.meta },
+    data: result.result,
   });
 });
 
-const getAllOrders = catchAsync(async (_req, res) => {
-  const result = await OrderServices.getAllOrdersFromDB();
+const getAllOrders = catchAsync(async (req, res) => {
+  const result = await OrderServices.getAllOrdersFromDB(req.query);
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'Orders retrieved successfully',
-    data: result,
+    meta: { ...result.meta },
+    data: result.result,
   });
 });
 
