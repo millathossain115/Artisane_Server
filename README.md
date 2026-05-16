@@ -226,6 +226,13 @@ Admin only:
 
 - `GET /dashboard/admin-stats`
 
+Supported dashboard query params:
+
+- `dateFrom` in a date-like format such as `2026-05-01`
+- `dateTo` in a date-like format such as `2026-05-31`
+- `orderStatus` with `pending`, `confirmed`, `processing`, `shipped`, `delivered`, or `cancelled`
+- `paymentStatus` with `unpaid`, `paid`, `failed`, or `refunded`
+
 Current dashboard response includes:
 
 - total users
@@ -238,6 +245,7 @@ Current dashboard response includes:
 - recent users
 - recent orders
 - recent reviews
+- applied filters summary
 
 ## Order Rules
 
