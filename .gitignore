@@ -17,5 +17,6 @@ Thumbs.db
 .idea/
 
 coverage/
+uploads/
 codex.md
 implementation.md

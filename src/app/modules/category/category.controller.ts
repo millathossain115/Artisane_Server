@@ -1,11 +1,26 @@
+import type { Request } from 'express';
 import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
 import { CategoryServices } from './category.service.js';
 
+const getUploadedImageUrl = (req: Request) => {
+  if (!req.file) {
+    return undefined;
+  }
+
+  return `${req.protocol}://${req.get('host')}/uploads/categories/${
+    req.file.filename
+  }`;
+};
+
 const createCategory = catchAsync(async (req, res) => {
   console.log('Category.create req.body: ', req.body);
-  const result = await CategoryServices.createCategoryIntoDB(req.body);
+  const image = getUploadedImageUrl(req);
+  const result = await CategoryServices.createCategoryIntoDB({
+    ...req.body,
+    ...(image ? { image } : {}),
+  });
 
   sendResponse(res, {
     statusCode: 201,
@@ -56,7 +71,11 @@ const updateCategory = catchAsync(async (req, res) => {
     throw new AppError(400, 'Category id is required');
   }
 
-  const result = await CategoryServices.updateCategoryIntoDB(id, req.body);
+  const image = getUploadedImageUrl(req);
+  const result = await CategoryServices.updateCategoryIntoDB(id, {
+    ...req.body,
+    ...(image ? { image } : {}),
+  });
 
   if (!result) {
     throw new AppError(404, 'Category not found');
