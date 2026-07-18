@@ -1,5 +1,9 @@
 import { Schema, model } from 'mongoose';
-import { ORDER_STATUS, PAYMENT_STATUS } from './order.constant.js';
+import {
+  ORDER_STATUS,
+  PAYMENT_METHOD,
+  PAYMENT_STATUS,
+} from './order.constant.js';
 import type { IOrder, IOrderItem } from './order.interface.js';
 
 const orderItemSchema = new Schema<IOrderItem>(
@@ -70,6 +74,12 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       required: [true, 'Contact phone is required'],
       trim: true,
+    },
+    paymentMethod: {
+      type: String,
+      enum: Object.keys(PAYMENT_METHOD),
+      default: PAYMENT_METHOD.cod,
+      required: [true, 'Payment method is required'],
     },
     orderStatus: {
       type: String,

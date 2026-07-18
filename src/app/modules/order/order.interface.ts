@@ -1,8 +1,13 @@
 import type { Types } from 'mongoose';
-import type { PAYMENT_STATUS, ORDER_STATUS } from './order.constant.js';
+import type {
+  PAYMENT_METHOD,
+  PAYMENT_STATUS,
+  ORDER_STATUS,
+} from './order.constant.js';
 
 export type TOrderStatus = keyof typeof ORDER_STATUS;
 export type TPaymentStatus = keyof typeof PAYMENT_STATUS;
+export type TPaymentMethod = keyof typeof PAYMENT_METHOD;
 
 export interface IOrderItem {
   product: Types.ObjectId;
@@ -19,6 +24,7 @@ export interface IOrder {
   totalPrice: number;
   shippingAddress: string;
   contactPhone: string;
+  paymentMethod?: TPaymentMethod;
   orderStatus?: TOrderStatus;
   paymentStatus?: TPaymentStatus;
   notes?: string;
@@ -34,5 +40,6 @@ export interface ICreateOrderPayload {
   items: ICreateOrderItemPayload[];
   shippingAddress: string;
   contactPhone: string;
+  paymentMethod: TPaymentMethod;
   notes?: string;
 }

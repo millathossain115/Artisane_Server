@@ -14,6 +14,14 @@ export const PAYMENT_STATUS = {
   refunded: 'refunded',
 } as const;
 
+export const PAYMENT_METHOD = {
+  cod: 'cod',
+  sslcommerz: 'sslcommerz',
+  bkash: 'bkash',
+  nagad: 'nagad',
+  rocket: 'rocket',
+} as const;
+
 export const ORDER_STATUS_TRANSITIONS = {
   pending: [ORDER_STATUS.confirmed, ORDER_STATUS.cancelled],
   confirmed: [ORDER_STATUS.processing, ORDER_STATUS.cancelled],

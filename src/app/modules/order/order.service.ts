@@ -100,6 +100,7 @@ const createOrderIntoDB = async (
     totalPrice,
     shippingAddress: payload.shippingAddress,
     contactPhone: payload.contactPhone,
+    paymentMethod: payload.paymentMethod,
     ...(payload.notes ? { notes: payload.notes } : {}),
   };
 

@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { ORDER_STATUS, PAYMENT_STATUS } from './order.constant.js';
+import {
+  ORDER_STATUS,
+  PAYMENT_METHOD,
+  PAYMENT_STATUS,
+} from './order.constant.js';
 
 const createOrderValidationSchema = z.object({
   items: z
@@ -23,6 +27,7 @@ const createOrderValidationSchema = z.object({
     .trim()
     .min(7, { message: 'Contact phone must be at least 7 characters' })
     .max(20, { message: 'Contact phone cannot exceed 20 characters' }),
+  paymentMethod: z.enum(Object.keys(PAYMENT_METHOD) as [string, ...string[]]),
   notes: z
     .string()
     .trim()
