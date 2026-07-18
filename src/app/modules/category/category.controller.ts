@@ -30,15 +30,15 @@ const createCategory = catchAsync(async (req, res) => {
   });
 });
 
-const getAllCategories = catchAsync(async (_req, res) => {
-  console.log('Category.getAll _req: ', _req);
-  const result = await CategoryServices.getAllCategoriesFromDB();
+const getAllCategories = catchAsync(async (req, res) => {
+  const result = await CategoryServices.getAllCategoriesFromDB(req.query);
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: 'Categories retrieved successfully',
-    data: result,
+    meta: { ...result.meta },
+    data: result.result,
   });
 });
 
