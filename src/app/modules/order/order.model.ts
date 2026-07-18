@@ -81,6 +81,31 @@ const orderSchema = new Schema<IOrder>(
       default: PAYMENT_METHOD.cod,
       required: [true, 'Payment method is required'],
     },
+    transactionId: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+    },
+    sslcommerzSessionKey: {
+      type: String,
+      trim: true,
+    },
+    sslcommerzValidationId: {
+      type: String,
+      trim: true,
+    },
+    bankTransactionId: {
+      type: String,
+      trim: true,
+    },
+    cardType: {
+      type: String,
+      trim: true,
+    },
+    paidAt: {
+      type: Date,
+    },
     orderStatus: {
       type: String,
       enum: Object.keys(ORDER_STATUS),

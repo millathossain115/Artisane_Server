@@ -18,6 +18,13 @@ router.get(
   auth(USER_ROLE.admin, USER_ROLE.user),
   OrderControllers.getMyOrders,
 );
+router.post('/payment/success', OrderControllers.sslcommerzSuccess);
+router.get('/payment/success', OrderControllers.sslcommerzSuccess);
+router.post('/payment/fail', OrderControllers.sslcommerzFail);
+router.get('/payment/fail', OrderControllers.sslcommerzFail);
+router.post('/payment/cancel', OrderControllers.sslcommerzCancel);
+router.get('/payment/cancel', OrderControllers.sslcommerzCancel);
+router.post('/payment/ipn', OrderControllers.sslcommerzIpn);
 router.get('/', auth(USER_ROLE.admin), OrderControllers.getAllOrders);
 router.get('/:id', auth(USER_ROLE.admin), OrderControllers.getSingleOrder);
 router.patch(

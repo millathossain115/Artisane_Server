@@ -25,6 +25,12 @@ export interface IOrder {
   shippingAddress: string;
   contactPhone: string;
   paymentMethod?: TPaymentMethod;
+  transactionId?: string;
+  sslcommerzSessionKey?: string;
+  sslcommerzValidationId?: string;
+  bankTransactionId?: string;
+  cardType?: string;
+  paidAt?: Date;
   orderStatus?: TOrderStatus;
   paymentStatus?: TPaymentStatus;
   notes?: string;

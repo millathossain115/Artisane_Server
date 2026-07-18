@@ -10,6 +10,7 @@ const app: Application = express();
 
 // Parsers
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
