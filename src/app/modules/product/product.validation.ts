@@ -30,8 +30,11 @@ const createProductValidationSchema = z.object({
     .trim()
     .max(2000, { message: 'Description cannot exceed 2000 characters' })
     .optional(),
-  price: z.number().min(0, { message: 'Price cannot be negative' }),
-  stock: z.number().int().min(0, { message: 'Stock cannot be negative' }),
+  price: z.coerce.number().min(0, { message: 'Price cannot be negative' }),
+  stock: z.coerce
+    .number()
+    .int()
+    .min(0, { message: 'Stock cannot be negative' }),
   category: z.string().trim().min(1, { message: 'Category is required' }),
   brand: z
     .string()
@@ -61,8 +64,11 @@ const updateProductValidationSchema = z.object({
     .trim()
     .max(2000, { message: 'Description cannot exceed 2000 characters' })
     .optional(),
-  price: z.number().min(0, { message: 'Price cannot be negative' }).optional(),
-  stock: z
+  price: z.coerce
+    .number()
+    .min(0, { message: 'Price cannot be negative' })
+    .optional(),
+  stock: z.coerce
     .number()
     .int()
     .min(0, { message: 'Stock cannot be negative' })

@@ -1,11 +1,26 @@
+import type { Request } from 'express';
 import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
 import { ProductServices } from './product.service.js';
 
+const getUploadedImageUrls = (req: Request) => {
+  if (!Array.isArray(req.files) || req.files.length === 0) {
+    return undefined;
+  }
+
+  return req.files.map(
+    (file) =>
+      `${req.protocol}://${req.get('host')}/uploads/products/${file.filename}`,
+  );
+};
+
 const createProduct = catchAsync(async (req, res) => {
-  console.log('Product.create req.body: ', req.body);
-  const result = await ProductServices.createProductIntoDB(req.body);
+  const images = getUploadedImageUrls(req);
+  const result = await ProductServices.createProductIntoDB({
+    ...req.body,
+    ...(images ? { images } : {}),
+  });
 
   sendResponse(res, {
     statusCode: 201,
@@ -55,7 +70,11 @@ const updateProduct = catchAsync(async (req, res) => {
     throw new AppError(400, 'Product id is required');
   }
 
-  const result = await ProductServices.updateProductIntoDB(id, req.body);
+  const images = getUploadedImageUrls(req);
+  const result = await ProductServices.updateProductIntoDB(id, {
+    ...req.body,
+    ...(images ? { images } : {}),
+  });
 
   if (!result) {
     throw new AppError(404, 'Product not found');
