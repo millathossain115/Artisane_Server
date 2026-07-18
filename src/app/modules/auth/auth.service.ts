@@ -11,6 +11,7 @@ import type {
   IJwtPayload,
   ILoginUser,
   IRegisterUser,
+  IUpdateMyProfile,
 } from './auth.interface.js';
 
 const createToken = (
@@ -27,6 +28,10 @@ const buildAuthUserResponse = (user: {
   name: string;
   email: string;
   phone?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  avatar?: string;
   role?: IJwtPayload['role'];
   status?: TUserStatus;
   isDeleted?: boolean;
@@ -36,6 +41,10 @@ const buildAuthUserResponse = (user: {
     name: user.name,
     email: user.email,
     ...(user.phone ? { phone: user.phone } : {}),
+    ...(user.address ? { address: user.address } : {}),
+    ...(user.city ? { city: user.city } : {}),
+    ...(user.postalCode ? { postalCode: user.postalCode } : {}),
+    ...(user.avatar ? { avatar: user.avatar } : {}),
     ...(user.role ? { role: user.role } : {}),
     ...(user.status ? { status: user.status } : {}),
     ...(typeof user.isDeleted === 'boolean'
@@ -133,8 +142,35 @@ const getMe = async (userId: string) => {
   return user;
 };
 
+const updateMyProfileIntoDB = async (
+  userId: string,
+  payload: IUpdateMyProfile,
+) => {
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  if (user.isDeleted || user.status === USER_STATUS.blocked) {
+    throw new AppError(401, 'You are not authorized!');
+  }
+
+  const result = await User.findOneAndUpdate(
+    { _id: userId, isDeleted: false },
+    payload,
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  return result;
+};
+
 export const AuthServices = {
   registerUserIntoDB,
   loginUser,
   getMe,
+  updateMyProfileIntoDB,
 };

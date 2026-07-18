@@ -25,6 +25,22 @@ const userSchema = new Schema<IUser>(
       type: String,
       trim: true,
     },
+    address: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
+    postalCode: {
+      type: String,
+      trim: true,
+    },
+    avatar: {
+      type: String,
+      trim: true,
+    },
     role: {
       type: String,
       enum: Object.keys(USER_ROLE),

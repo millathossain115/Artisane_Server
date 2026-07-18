@@ -21,4 +21,11 @@ router.post(
 
 router.get('/me', auth(USER_ROLE.admin, USER_ROLE.user), AuthControllers.getMe);
 
+router.patch(
+  '/me',
+  auth(USER_ROLE.admin, USER_ROLE.user),
+  validateRequest(AuthValidations.updateMyProfileValidationSchema),
+  AuthControllers.updateMyProfile,
+);
+
 export const AuthRoutes = router;

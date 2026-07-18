@@ -10,6 +10,15 @@ export interface IRegisterUser {
   role?: TUserRole;
 }
 
+export interface IUpdateMyProfile {
+  name?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  avatar?: string;
+}
+
 export interface ILoginUser {
   email: string;
   password: string;
@@ -34,6 +43,10 @@ export interface IAuthResponse {
     name: string;
     email: string;
     phone?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    avatar?: string;
     role?: TUserRole;
     status?: TUserStatus;
     isDeleted?: boolean;

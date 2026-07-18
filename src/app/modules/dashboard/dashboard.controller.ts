@@ -13,6 +13,21 @@ const getAdminStats = catchAsync(async (req, res) => {
   });
 });
 
+const getUserStats = catchAsync(async (req, res) => {
+  const result = await DashboardServices.getUserStatsFromDB(
+    req.user.userId,
+    req.query,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'User dashboard stats retrieved successfully',
+    data: result,
+  });
+});
+
 export const DashboardControllers = {
   getAdminStats,
+  getUserStats,
 };

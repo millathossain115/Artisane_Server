@@ -34,7 +34,44 @@ const loginUserValidationSchema = z.object({
   password: z.string().min(1, { message: 'Password is required' }),
 });
 
+const updateMyProfileValidationSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, { message: 'Name cannot be empty' })
+      .max(50, { message: 'Name cannot exceed 50 characters' })
+      .optional(),
+    phone: z
+      .string()
+      .trim()
+      .max(20, { message: 'Phone number cannot exceed 20 characters' })
+      .optional(),
+    address: z
+      .string()
+      .trim()
+      .max(200, { message: 'Address cannot exceed 200 characters' })
+      .optional(),
+    city: z
+      .string()
+      .trim()
+      .max(80, { message: 'City cannot exceed 80 characters' })
+      .optional(),
+    postalCode: z
+      .string()
+      .trim()
+      .max(20, { message: 'Postal code cannot exceed 20 characters' })
+      .optional(),
+    avatar: z
+      .string()
+      .trim()
+      .max(300, { message: 'Avatar cannot exceed 300 characters' })
+      .optional(),
+  })
+  .strict();
+
 export const AuthValidations = {
   registerUserValidationSchema,
   loginUserValidationSchema,
+  updateMyProfileValidationSchema,
 };

@@ -11,4 +11,10 @@ router.get(
   DashboardControllers.getAdminStats,
 );
 
+router.get(
+  '/my-stats',
+  auth(USER_ROLE.admin, USER_ROLE.user),
+  DashboardControllers.getUserStats,
+);
+
 export const DashboardRoutes = router;

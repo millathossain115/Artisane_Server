@@ -8,6 +8,10 @@ export interface IUser {
   email: string;
   password?: string;
   phone?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  avatar?: string;
   role?: TUserRole;
   status?: TUserStatus;
   isDeleted?: boolean;

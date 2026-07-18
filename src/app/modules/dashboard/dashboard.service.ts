@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { ORDER_STATUS } from '../order/order.constant.js';
 import { Order } from '../order/order.model.js';
 import { Product } from '../product/product.model.js';
@@ -6,6 +7,7 @@ import { User } from '../user/user.model.js';
 import type {
   IAdminDashboardFilters,
   IAdminDashboardStats,
+  IUserDashboardStats,
 } from './dashboard.interface.js';
 
 const VALID_ORDER_STATUSES = new Set(Object.keys(ORDER_STATUS));
@@ -19,6 +21,12 @@ type TDashboardOrderStatus = NonNullable<IAdminDashboardFilters['orderStatus']>;
 type TDashboardPaymentStatus = NonNullable<
   IAdminDashboardFilters['paymentStatus']
 >;
+const ACTIVE_USER_ORDER_STATUSES = [
+  ORDER_STATUS.pending,
+  ORDER_STATUS.confirmed,
+  ORDER_STATUS.processing,
+  ORDER_STATUS.shipped,
+];
 
 const parseDashboardFilters = (
   query: Record<string, unknown>,
@@ -96,6 +104,16 @@ const buildOrderMatch = (filters: IAdminDashboardFilters) => {
   }
 
   return match;
+};
+
+const buildUserOrderMatch = (
+  userId: string,
+  filters: IAdminDashboardFilters,
+) => {
+  return {
+    ...buildOrderMatch(filters),
+    user: new Types.ObjectId(userId),
+  };
 };
 
 const buildRevenueMatch = (filters: IAdminDashboardFilters) => {
@@ -241,6 +259,124 @@ const getAdminStatsFromDB = async (
   };
 };
 
+const getUserStatsFromDB = async (
+  userId: string,
+  query: Record<string, unknown>,
+): Promise<IUserDashboardStats> => {
+  const filters = parseDashboardFilters(query);
+  const orderMatch = buildUserOrderMatch(userId, filters);
+  const userObjectId = new Types.ObjectId(userId);
+
+  const [
+    totalOrders,
+    activeOrders,
+    deliveredOrders,
+    cancelledOrders,
+    orderValueAgg,
+    totalReviews,
+    averageRatingAgg,
+    orderStatusSummary,
+    recentOrders,
+    recentReviews,
+  ] = await Promise.all([
+    Order.countDocuments(orderMatch),
+    Order.countDocuments({
+      ...orderMatch,
+      orderStatus: { $in: ACTIVE_USER_ORDER_STATUSES },
+    }),
+    Order.countDocuments({
+      ...orderMatch,
+      orderStatus: ORDER_STATUS.delivered,
+    }),
+    Order.countDocuments({
+      ...orderMatch,
+      orderStatus: ORDER_STATUS.cancelled,
+    }),
+    Order.aggregate([
+      {
+        $match: {
+          ...orderMatch,
+          orderStatus: { $ne: ORDER_STATUS.cancelled },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrderValue: { $sum: '$totalPrice' },
+        },
+      },
+    ]),
+    Review.countDocuments({ user: userObjectId, isDeleted: false }),
+    Review.aggregate([
+      {
+        $match: {
+          user: userObjectId,
+          isDeleted: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$rating' },
+        },
+      },
+    ]),
+    Order.aggregate([
+      {
+        $match: orderMatch,
+      },
+      {
+        $group: {
+          _id: '$orderStatus',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: {
+          _id: 1,
+        },
+      },
+    ]),
+    Order.find(orderMatch)
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate({
+        path: 'items.product',
+        select: 'name slug category',
+        populate: {
+          path: 'category',
+          select: 'name slug',
+        },
+      }),
+    Review.find({ user: userObjectId, isDeleted: false })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate({
+        path: 'product',
+        select: 'name slug category',
+        populate: {
+          path: 'category',
+          select: 'name slug',
+        },
+      }),
+  ]);
+
+  return {
+    totalOrders,
+    activeOrders,
+    deliveredOrders,
+    cancelledOrders,
+    totalOrderValue: orderValueAgg[0]?.totalOrderValue || 0,
+    totalReviews,
+    averageRating: averageRatingAgg[0]?.averageRating || 0,
+    orderStatusSummary,
+    recentOrders,
+    recentReviews,
+    appliedFilters: buildAppliedFilters(filters),
+  };
+};
+
 export const DashboardServices = {
   getAdminStatsFromDB,
+  getUserStatsFromDB,
 };

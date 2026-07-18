@@ -25,3 +25,22 @@ export interface IAdminDashboardStats {
     paymentStatus: TPaymentStatus | null;
   };
 }
+
+export interface IUserDashboardStats {
+  totalOrders: number;
+  activeOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  totalOrderValue: number;
+  totalReviews: number;
+  averageRating: number;
+  orderStatusSummary: unknown[];
+  recentOrders: unknown[];
+  recentReviews: unknown[];
+  appliedFilters: {
+    dateFrom: string | null;
+    dateTo: string | null;
+    orderStatus: TOrderStatus | null;
+    paymentStatus: TPaymentStatus | null;
+  };
+}
