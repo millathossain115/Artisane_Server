@@ -1,9 +1,11 @@
 import { Types } from 'mongoose';
 import { ORDER_STATUS } from '../order/order.constant.js';
 import { Order } from '../order/order.model.js';
+import '../category/category.model.js';
 import { Product } from '../product/product.model.js';
 import { Review } from '../review/review.model.js';
 import { User } from '../user/user.model.js';
+import { Wishlist } from '../wishlist/wishlist.model.js';
 import type {
   IAdminDashboardFilters,
   IAdminDashboardStats,
@@ -27,6 +29,8 @@ const ACTIVE_USER_ORDER_STATUSES = [
   ORDER_STATUS.processing,
   ORDER_STATUS.shipped,
 ];
+const USER_RECENT_ORDER_LIMIT = 3;
+const USER_RECENT_WISHLIST_LIMIT = 4;
 
 const parseDashboardFilters = (
   query: Record<string, unknown>,
@@ -274,10 +278,12 @@ const getUserStatsFromDB = async (
     cancelledOrders,
     orderValueAgg,
     totalReviews,
+    totalWishlistItems,
     averageRatingAgg,
     orderStatusSummary,
     recentOrders,
     recentReviews,
+    recentWishlistItems,
   ] = await Promise.all([
     Order.countDocuments(orderMatch),
     Order.countDocuments({
@@ -307,6 +313,7 @@ const getUserStatsFromDB = async (
       },
     ]),
     Review.countDocuments({ user: userObjectId, isDeleted: false }),
+    Wishlist.countDocuments({ user: userObjectId, isDeleted: false }),
     Review.aggregate([
       {
         $match: {
@@ -339,7 +346,7 @@ const getUserStatsFromDB = async (
     ]),
     Order.find(orderMatch)
       .sort({ createdAt: -1 })
-      .limit(5)
+      .limit(USER_RECENT_ORDER_LIMIT)
       .populate({
         path: 'items.product',
         select: 'name slug category',
@@ -359,6 +366,17 @@ const getUserStatsFromDB = async (
           select: 'name slug',
         },
       }),
+    Wishlist.find({ user: userObjectId, isDeleted: false })
+      .sort({ createdAt: -1 })
+      .limit(USER_RECENT_WISHLIST_LIMIT)
+      .populate({
+        path: 'product',
+        select: 'name slug price stock category brand images',
+        populate: {
+          path: 'category',
+          select: 'name slug',
+        },
+      }),
   ]);
 
   return {
@@ -368,10 +386,12 @@ const getUserStatsFromDB = async (
     cancelledOrders,
     totalOrderValue: orderValueAgg[0]?.totalOrderValue || 0,
     totalReviews,
+    totalWishlistItems,
     averageRating: averageRatingAgg[0]?.averageRating || 0,
     orderStatusSummary,
     recentOrders,
     recentReviews,
+    recentWishlistItems,
     appliedFilters: buildAppliedFilters(filters),
   };
 };

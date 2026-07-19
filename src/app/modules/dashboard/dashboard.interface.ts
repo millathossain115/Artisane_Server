@@ -33,10 +33,12 @@ export interface IUserDashboardStats {
   cancelledOrders: number;
   totalOrderValue: number;
   totalReviews: number;
+  totalWishlistItems: number;
   averageRating: number;
   orderStatusSummary: unknown[];
   recentOrders: unknown[];
   recentReviews: unknown[];
+  recentWishlistItems: unknown[];
   appliedFilters: {
     dateFrom: string | null;
     dateTo: string | null;
