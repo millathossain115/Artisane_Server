@@ -38,11 +38,7 @@ const buildCategoryMatchConditions = (
 
   if (hasImage === 'false') {
     andConditions.push({
-      $or: [
-        { image: { $exists: false } },
-        { image: '' },
-        { image: null },
-      ],
+      $or: [{ image: { $exists: false } }, { image: '' }, { image: null }],
     });
   }
 
