@@ -13,6 +13,7 @@ export interface IOrderItem {
   product: Types.ObjectId;
   productName: string;
   productSlug: string;
+  image?: string;
   quantity: number;
   unitPrice: number;
   subtotal: number;

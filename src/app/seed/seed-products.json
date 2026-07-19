@@ -1,0 +1,159 @@
+{
+  "category": {
+    "name": "Artist Brushes & Tools",
+    "slug": "artist-brushes-tools",
+    "description": "Painting brushes, palettes, palette knives, brush pens, and studio tools for watercolor, acrylic, oil, school projects, and hobby artwork."
+  },
+  "source": {
+    "site": "Rokomari-like curated demo seed",
+    "url": "https://www.rokomari.com/product/category/3182/artist-brushes-tools",
+    "note": "Curated similar demo data only. Product names, descriptions, and images are not copied from Rokomari."
+  },
+  "products": [
+    {
+      "name": "Keep Smiling Round Artist Brush Set - 9 pcs",
+      "brand": "Keep Smiling",
+      "price": "TK. 480",
+      "stock": 20,
+      "description": "Long-handle round brush set for clean lines, detail strokes, watercolor washes, acrylic work, and hobby painting."
+    },
+    {
+      "name": "Keep Smiling Flat Artist Brush Set - 9 pcs",
+      "brand": "Keep Smiling",
+      "price": "TK. 499",
+      "description": "Flat brush collection made for broad strokes, blocking color, edges, school projects, and canvas practice."
+    },
+    {
+      "name": "Keep Smiling Filbert Artist Brush Set - 9 pcs",
+      "brand": "Keep Smiling",
+      "price": "TK. 480",
+      "description": "Filbert brush set with rounded tips for blending, soft edges, florals, portrait work, and acrylic or oil painting."
+    },
+    {
+      "name": "Keep Smiling Angular Artist Brush Set - 9 pcs",
+      "brand": "Keep Smiling",
+      "price": "TK. 480",
+      "description": "Angular brush set for controlled curves, sharp corners, lettering, leaf shapes, and decorative painting."
+    },
+    {
+      "name": "Non-Brand Bristle Flat Paint Brush - 4 inch",
+      "brand": "Non-Brand",
+      "price": "TK. 199",
+      "description": "Wide bristle brush for acrylic, oil, watercolor backgrounds, priming boards, wall touchups, and craft surfaces."
+    },
+    {
+      "name": "Non-Brand Bristle Flat Paint Brush - 5 inch",
+      "brand": "Non-Brand",
+      "price": "TK. 320",
+      "description": "Large flat bristle brush for fast coverage, textured strokes, canvas grounds, murals, and studio utility work."
+    },
+    {
+      "name": "Mont Marte Oval Plastic Palette - 1 pc",
+      "brand": "Mont Marte",
+      "price": "TK. 259",
+      "description": "Lightweight oval mixing palette with wells for watercolor, acrylic, gouache, and classroom painting sessions."
+    },
+    {
+      "name": "Baile Palette Knife Set - 5 pcs",
+      "brand": "Baile",
+      "price": "TK. 199",
+      "description": "Flexible palette knives for mixing paint, spreading texture, scraping color, and creating impasto effects."
+    },
+    {
+      "name": "Doms Brush Pen Set - 26 pcs",
+      "brand": "Doms",
+      "price": "TK. 899",
+      "description": "Assorted brush pen set for lettering, sketch notes, illustration, journaling, coloring, and smooth marker strokes."
+    },
+    {
+      "name": "Camel Synthetic Brush Set - 6 pcs",
+      "brand": "Camel",
+      "price": "TK. 220",
+      "description": "Synthetic brush pack for beginners and students working with poster color, watercolor, acrylic, and craft paint."
+    },
+    {
+      "name": "Faber Castell School Paint Brush Set - 7 pcs",
+      "brand": "Faber Castell",
+      "price": "TK. 315",
+      "description": "Durable student brush set with mixed shapes for school assignments, drawing classes, and weekend art practice."
+    },
+    {
+      "name": "Giorgione Fine Detail Liner Brush Set - 6 pcs",
+      "brand": "Giorgione",
+      "price": "TK. 425",
+      "description": "Fine liner brushes for miniature details, outlines, signatures, calligraphy accents, and precise finishing work."
+    },
+    {
+      "name": "Titi Water Brush Pen Set - 3 pcs",
+      "brand": "Titi",
+      "price": "TK. 180",
+      "description": "Refillable water brush pens for portable watercolor sketching, blending pencils, ink wash, and travel painting."
+    },
+    {
+      "name": "Deli Round Plastic Palette - 10 Wells",
+      "brand": "Deli",
+      "price": "TK. 95",
+      "description": "Compact round palette with multiple wells for mixing small amounts of paint during class or studio practice."
+    },
+    {
+      "name": "Maries Fan Brush Set - 3 pcs",
+      "brand": "Maries",
+      "price": "TK. 260",
+      "description": "Fan brush trio for grass texture, clouds, dry-brush blending, foliage marks, and soft painting effects."
+    },
+    {
+      "name": "Canson Mixing Tray Palette - 12 Wells",
+      "brand": "Canson",
+      "price": "TK. 145",
+      "description": "Easy-clean mixing tray with twelve wells for watercolor, gouache, ink, and classroom color studies."
+    },
+    {
+      "name": "Himi Miya Nylon Brush Set - 12 pcs",
+      "brand": "Himi Miya",
+      "price": "TK. 560",
+      "description": "Nylon brush set with mixed sizes for gouache, acrylic, watercolor, illustration, and hobby canvas painting."
+    },
+    {
+      "name": "M&G Wooden Handle Brush Set - 10 pcs",
+      "brand": "M&G",
+      "price": "TK. 350",
+      "description": "Wooden handle brush set for everyday art class use, poster color work, craft projects, and basic canvas studies."
+    },
+    {
+      "name": "Iconic Sourcing Clay Tool Set - 11 pcs",
+      "brand": "Iconic Sourcing",
+      "price": "TK. 299",
+      "description": "Modeling tool set for shaping clay, polymer projects, texture marks, sculpting details, and mixed media work."
+    },
+    {
+      "name": "Ronix Steel Brush Washer",
+      "brand": "Ronix",
+      "price": "TK. 650",
+      "description": "Metal brush washer for rinsing and resting brushes during oil, acrylic, watercolor, and studio painting sessions."
+    },
+    {
+      "name": "Worison Brush Holder Roll - 24 Slots",
+      "brand": "Worison",
+      "price": "TK. 420",
+      "description": "Roll-up brush holder for storing and carrying painting brushes, pens, palette knives, and small art tools."
+    },
+    {
+      "name": "Non-Brand Paper Blending Stump Pack - 3 pcs",
+      "brand": "Non-Brand",
+      "price": "TK. 58",
+      "description": "Paper blending stumps for graphite, charcoal, pastel, shading practice, sketch finishing, and soft gradients."
+    },
+    {
+      "name": "Baile Drawing Board Clip Set - 4 pcs",
+      "brand": "Baile",
+      "price": "TK. 120",
+      "description": "Strong board clips for holding watercolor paper, sketch sheets, canvas paper, and study references in place."
+    },
+    {
+      "name": "Mont Marte Table Easel - Small",
+      "brand": "Mont Marte",
+      "price": "TK. 1250",
+      "description": "Small table easel for display, sketching, acrylic painting, tabletop canvas work, and compact studio setups."
+    }
+  ]
+}

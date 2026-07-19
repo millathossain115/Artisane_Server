@@ -28,6 +28,28 @@ const categorySchema = new Schema<ICategory>(
       type: Boolean,
       default: false,
     },
+    seedSource: {
+      type: {
+        site: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        url: {
+          type: String,
+          trim: true,
+        },
+        capturedAt: {
+          type: Date,
+          required: true,
+        },
+        note: {
+          type: String,
+          trim: true,
+        },
+      },
+      select: false,
+    },
   },
   {
     timestamps: true,

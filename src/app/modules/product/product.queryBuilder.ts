@@ -129,6 +129,7 @@ export const buildProductAggregationPipeline = (
     {
       $project: {
         reviews: 0,
+        seedSource: 0,
       },
     },
     {

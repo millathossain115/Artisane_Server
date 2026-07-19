@@ -24,6 +24,10 @@ const orderItemSchema = new Schema<IOrderItem>(
       trim: true,
       lowercase: true,
     },
+    image: {
+      type: String,
+      trim: true,
+    },
     quantity: {
       type: Number,
       required: [true, 'Quantity is required'],

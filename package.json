@@ -7,6 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "seed:artist-brushes": "tsx src/app/seed/seedArtistBrushes.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prettier": "prettier --ignore-path .prettierignore --write \"src/**/*.+(js|ts|json)\"",

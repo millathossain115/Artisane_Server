@@ -64,7 +64,7 @@ const PAYMENT_METHOD_GATEWAYS: Partial<Record<string, string>> = {
 const populateOrder = <T>(query: Query<T, IOrder>) =>
   query.populate('user', 'name email role').populate({
     path: 'items.product',
-    select: 'name slug price category',
+    select: 'name slug price category images',
     populate: {
       path: 'category',
       select: 'name slug',
@@ -283,6 +283,7 @@ const createOrderIntoDB = async (
       product: product._id,
       productName: product.name,
       productSlug: product.slug,
+      ...(product.images?.[0] ? { image: product.images[0] } : {}),
       quantity: item.quantity,
       unitPrice: product.price,
       subtotal,

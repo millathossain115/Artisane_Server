@@ -1,4 +1,4 @@
-import { Schema, Types, model } from 'mongoose';
+import { Schema, model } from 'mongoose';
 import type { IProduct } from './product.interface.js';
 
 const productSchema = new Schema<IProduct>(
@@ -47,6 +47,28 @@ const productSchema = new Schema<IProduct>(
       type: Boolean,
       default: false,
     },
+    seedSource: {
+      type: {
+        site: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        url: {
+          type: String,
+          trim: true,
+        },
+        capturedAt: {
+          type: Date,
+          required: true,
+        },
+        note: {
+          type: String,
+          trim: true,
+        },
+      },
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -54,7 +76,9 @@ const productSchema = new Schema<IProduct>(
 );
 
 productSchema.path('images').validate((value: string[]) => {
-  return value.every((image) => typeof image === 'string' && image.trim().length > 0);
+  return value.every(
+    (image) => typeof image === 'string' && image.trim().length > 0,
+  );
 }, 'Images must contain valid URLs');
 
 export const Product = model<IProduct>('Product', productSchema);

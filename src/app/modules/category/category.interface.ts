@@ -6,6 +6,12 @@ export interface ICategory {
   description?: string;
   image?: string;
   isDeleted?: boolean;
+  seedSource?: {
+    site: string;
+    url?: string;
+    capturedAt: Date;
+    note?: string;
+  };
 }
 
 export interface ICategoryDocument extends ICategory {

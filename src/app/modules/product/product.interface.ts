@@ -10,6 +10,12 @@ export interface IProduct {
   brand?: string;
   images?: string[];
   isDeleted?: boolean;
+  seedSource?: {
+    site: string;
+    url?: string;
+    capturedAt: Date;
+    note?: string;
+  };
 }
 
 export interface IProductDocument extends IProduct {
