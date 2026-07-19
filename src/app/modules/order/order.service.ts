@@ -7,7 +7,9 @@ import {
 } from '../../utils/pagination.js';
 import { Product } from '../product/product.model.js';
 import { User } from '../user/user.model.js';
+import { ShippingServices } from '../shipping/shipping.service.js';
 import {
+  COURIER_PROVIDER,
   CANCELLABLE_ORDER_STATUSES,
   ORDER_STATUS,
   ORDER_STATUS_TRANSITIONS,
@@ -16,6 +18,7 @@ import {
 } from './order.constant.js';
 import type {
   ICreateOrderPayload,
+  ICreateShipmentPayload,
   IOrder,
   IOrderItem,
 } from './order.interface.js';
@@ -311,6 +314,7 @@ const createOrderIntoDB = async (
     contactPhone: payload.contactPhone,
     paymentMethod: payload.paymentMethod,
     transactionId: generateTransactionId(),
+    orderStatus: ORDER_STATUS.confirmed,
     ...(payload.notes ? { notes: payload.notes } : {}),
   };
 
@@ -337,6 +341,146 @@ const createOrderIntoDB = async (
   return {
     order: result,
     payment: null,
+  };
+};
+
+const createShipmentIntoDB = async (
+  id: string,
+  payload: ICreateShipmentPayload,
+) => {
+  const order = await Order.findOne({ _id: id, isDeleted: false });
+
+  if (!order) {
+    return null;
+  }
+
+  if (order.orderStatus === ORDER_STATUS.cancelled) {
+    throw new AppError(400, 'Cancelled order cannot create shipment');
+  }
+
+  if (order.orderStatus === ORDER_STATUS.delivered) {
+    throw new AppError(400, 'Delivered order cannot create shipment');
+  }
+
+  if (
+    order.orderStatus &&
+    order.orderStatus !== ORDER_STATUS.confirmed &&
+    order.orderStatus !== ORDER_STATUS.processing
+  ) {
+    throw new AppError(
+      400,
+      `Shipment can be created only for confirmed or processing orders`,
+    );
+  }
+
+  if (order.courierProvider || order.courierOrderId || order.trackingCode) {
+    throw new AppError(400, 'Shipment already exists for this order');
+  }
+
+  if (!(payload.courierProvider in COURIER_PROVIDER)) {
+    throw new AppError(400, 'Invalid courier provider');
+  }
+
+  const now = new Date();
+
+  const result = await populateOrder(
+    Order.findOneAndUpdate(
+      { _id: id, isDeleted: false },
+      {
+        courierOrderId: payload.courierOrderId,
+        courierProvider: payload.courierProvider,
+        courierStatus: 'shipment_created',
+        orderStatus: ORDER_STATUS.processing,
+        shipmentCreatedAt: now,
+        trackingCode: payload.trackingCode,
+        trackingUrl: payload.trackingUrl,
+      },
+      { new: true, runValidators: true },
+    ),
+  );
+
+  return result;
+};
+
+const syncShipmentIntoDB = async (id: string) => {
+  const order = await Order.findOne({ _id: id, isDeleted: false });
+
+  if (!order) {
+    return null;
+  }
+
+  if (!order.courierProvider || !order.trackingCode) {
+    throw new AppError(400, 'Shipment is not created for this order');
+  }
+
+  if (
+    order.orderStatus === ORDER_STATUS.cancelled ||
+    order.orderStatus === ORDER_STATUS.delivered
+  ) {
+    throw new AppError(400, `Order cannot sync when status is ${order.orderStatus}`);
+  }
+
+  const shipmentStatus = await ShippingServices.getShipmentStatus(order);
+  const mappedOrderStatus = ShippingServices.mapCourierStatusToOrderStatus(
+    shipmentStatus.courierStatus,
+  );
+  const now = new Date();
+  const update: Record<string, unknown> = {
+    courierStatus: shipmentStatus.courierStatus,
+    courierStatusRaw: shipmentStatus.courierStatusRaw,
+    lastCourierSyncAt: now,
+  };
+
+  if (mappedOrderStatus) {
+    update.orderStatus = mappedOrderStatus;
+
+    if (mappedOrderStatus === ORDER_STATUS.shipped && !order.shippedAt) {
+      update.shippedAt = now;
+    }
+
+    if (mappedOrderStatus === ORDER_STATUS.delivered) {
+      update.deliveredAt = order.deliveredAt || now;
+      update.shippedAt = order.shippedAt || now;
+    }
+  }
+
+  const result = await populateOrder(
+    Order.findOneAndUpdate({ _id: id, isDeleted: false }, update, {
+      new: true,
+      runValidators: true,
+    }),
+  );
+
+  return result;
+};
+
+const syncPendingShipmentsIntoDB = async () => {
+  const orders = await Order.find({
+    courierProvider: { $exists: true },
+    isDeleted: false,
+    orderStatus: { $nin: [ORDER_STATUS.cancelled, ORDER_STATUS.delivered] },
+    trackingCode: { $exists: true },
+  }).limit(25);
+
+  let failed = 0;
+  let synced = 0;
+
+  for (const order of orders) {
+    try {
+      const result = await syncShipmentIntoDB(order._id.toString());
+
+      if (result) {
+        synced += 1;
+      }
+    } catch {
+      failed += 1;
+    }
+  }
+
+  return {
+    failed,
+    scanned: orders.length,
+    synced,
   };
 };
 
@@ -611,6 +755,9 @@ const deleteSingleOrderFromDB = async (id: string) => {
 
 export const OrderServices = {
   createOrderIntoDB,
+  createShipmentIntoDB,
+  syncShipmentIntoDB,
+  syncPendingShipmentsIntoDB,
   getMyOrdersFromDB,
   getAllOrdersFromDB,
   getSingleOrderFromDB,

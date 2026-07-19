@@ -27,6 +27,17 @@ router.get('/payment/cancel', OrderControllers.sslcommerzCancel);
 router.post('/payment/ipn', OrderControllers.sslcommerzIpn);
 router.get('/', auth(USER_ROLE.admin), OrderControllers.getAllOrders);
 router.get('/:id', auth(USER_ROLE.admin), OrderControllers.getSingleOrder);
+router.post(
+  '/:id/shipment',
+  auth(USER_ROLE.admin),
+  validateRequest(OrderValidations.createShipmentValidationSchema),
+  OrderControllers.createShipment,
+);
+router.post(
+  '/:id/shipment/sync',
+  auth(USER_ROLE.admin),
+  OrderControllers.syncShipment,
+);
 router.patch(
   '/:id/status',
   auth(USER_ROLE.admin),

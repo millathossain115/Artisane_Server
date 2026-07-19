@@ -112,6 +112,48 @@ const updateOrderStatus = catchAsync(async (req, res) => {
   });
 });
 
+const createShipment = catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    throw new AppError(400, 'Order id is required');
+  }
+
+  const result = await OrderServices.createShipmentIntoDB(id, req.body);
+
+  if (!result) {
+    throw new AppError(404, 'Order not found');
+  }
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Shipment created successfully',
+    data: result,
+  });
+});
+
+const syncShipment = catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    throw new AppError(400, 'Order id is required');
+  }
+
+  const result = await OrderServices.syncShipmentIntoDB(id);
+
+  if (!result) {
+    throw new AppError(404, 'Order not found');
+  }
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Shipment synced successfully',
+    data: result,
+  });
+});
+
 const sslcommerzSuccess = catchAsync(async (req, res) => {
   const payload = getPaymentCallbackPayload(req);
 
@@ -213,6 +255,8 @@ export const OrderControllers = {
   getMyOrders,
   getAllOrders,
   getSingleOrder,
+  createShipment,
+  syncShipment,
   updateOrderStatus,
   sslcommerzSuccess,
   sslcommerzFail,

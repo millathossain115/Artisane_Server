@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  COURIER_PROVIDER,
   ORDER_STATUS,
   PAYMENT_METHOD,
   PAYMENT_STATUS,
@@ -52,7 +53,26 @@ const updateOrderStatusValidationSchema = z
     },
   );
 
+const createShipmentValidationSchema = z.object({
+  courierOrderId: z
+    .string()
+    .trim()
+    .min(1, { message: 'Courier order id is required' }),
+  courierProvider: z.enum(
+    Object.keys(COURIER_PROVIDER) as [string, ...string[]],
+  ),
+  trackingCode: z
+    .string()
+    .trim()
+    .min(1, { message: 'Tracking code is required' }),
+  trackingUrl: z
+    .string()
+    .trim()
+    .url({ message: 'Tracking URL must be valid' }),
+});
+
 export const OrderValidations = {
   createOrderValidationSchema,
+  createShipmentValidationSchema,
   updateOrderStatusValidationSchema,
 };

@@ -8,6 +8,7 @@ import type {
 export type TOrderStatus = keyof typeof ORDER_STATUS;
 export type TPaymentStatus = keyof typeof PAYMENT_STATUS;
 export type TPaymentMethod = keyof typeof PAYMENT_METHOD;
+export type TCourierProvider = 'redx' | 'steadfast' | 'pathao';
 
 export interface IOrderItem {
   product: Types.ObjectId;
@@ -25,6 +26,10 @@ export interface IOrder {
   totalPrice: number;
   shippingAddress: string;
   contactPhone: string;
+  courierOrderId?: string;
+  courierProvider?: TCourierProvider;
+  courierStatus?: string;
+  courierStatusRaw?: unknown;
   paymentMethod?: TPaymentMethod;
   transactionId?: string;
   sslcommerzSessionKey?: string;
@@ -34,6 +39,12 @@ export interface IOrder {
   paidAt?: Date;
   orderStatus?: TOrderStatus;
   paymentStatus?: TPaymentStatus;
+  trackingCode?: string;
+  trackingUrl?: string;
+  shipmentCreatedAt?: Date;
+  lastCourierSyncAt?: Date;
+  shippedAt?: Date;
+  deliveredAt?: Date;
   notes?: string;
   isDeleted?: boolean;
 }
@@ -49,4 +60,11 @@ export interface ICreateOrderPayload {
   contactPhone: string;
   paymentMethod: TPaymentMethod;
   notes?: string;
+}
+
+export interface ICreateShipmentPayload {
+  courierOrderId: string;
+  courierProvider: TCourierProvider;
+  trackingCode: string;
+  trackingUrl: string;
 }

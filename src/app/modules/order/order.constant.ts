@@ -22,6 +22,12 @@ export const PAYMENT_METHOD = {
   rocket: 'rocket',
 } as const;
 
+export const COURIER_PROVIDER = {
+  redx: 'redx',
+  steadfast: 'steadfast',
+  pathao: 'pathao',
+} as const;
+
 export const ORDER_STATUS_TRANSITIONS = {
   pending: [ORDER_STATUS.confirmed, ORDER_STATUS.cancelled],
   confirmed: [ORDER_STATUS.processing, ORDER_STATUS.cancelled],

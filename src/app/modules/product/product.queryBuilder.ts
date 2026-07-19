@@ -10,6 +10,8 @@ export const buildProductMatchStage = (query: Record<string, unknown>) => {
     typeof query.minPrice === 'string' ? Number(query.minPrice) : undefined;
   const maxPrice =
     typeof query.maxPrice === 'string' ? Number(query.maxPrice) : undefined;
+  const brand = typeof query.brand === 'string' ? query.brand.trim() : '';
+  const stock = typeof query.stock === 'string' ? query.stock.trim() : '';
 
   const matchStage: Record<string, unknown> = {
     isDeleted: false,
@@ -24,6 +26,21 @@ export const buildProductMatchStage = (query: Record<string, unknown>) => {
 
   if (category && Types.ObjectId.isValid(category)) {
     matchStage.category = new Types.ObjectId(category);
+  }
+
+  if (brand) {
+    matchStage.brand = {
+      $regex: brand,
+      $options: 'i',
+    };
+  }
+
+  if (stock === 'in-stock') {
+    matchStage.stock = { $gt: 0 };
+  }
+
+  if (stock === 'out-of-stock') {
+    matchStage.stock = { $lte: 0 };
   }
 
   if (
@@ -49,18 +66,33 @@ export const buildProductSortStage = (query: Record<string, unknown>) => {
 
   const sortStage: Record<string, 1 | -1> = { createdAt: -1 };
 
+  if (sortBy === 'createdAt' || sortBy === 'newest') {
+    sortStage.createdAt = sortOrder === 'asc' ? 1 : -1;
+  }
+
+  if (sortBy === 'updatedAt') {
+    sortStage.updatedAt = sortOrder === 'asc' ? 1 : -1;
+    delete sortStage.createdAt;
+  }
+
+  if (sortBy === 'name') {
+    sortStage.name = sortOrder === 'asc' ? 1 : -1;
+    delete sortStage.createdAt;
+  }
+
   if (sortBy === 'price') {
     sortStage.price = sortOrder === 'asc' ? 1 : -1;
+    delete sortStage.createdAt;
+  }
+
+  if (sortBy === 'stock') {
+    sortStage.stock = sortOrder === 'asc' ? 1 : -1;
     delete sortStage.createdAt;
   }
 
   if (sortBy === 'rating') {
     sortStage.averageRating = sortOrder === 'asc' ? 1 : -1;
     delete sortStage.createdAt;
-  }
-
-  if (sortBy === 'newest') {
-    sortStage.createdAt = sortOrder === 'asc' ? 1 : -1;
   }
 
   return sortStage;
@@ -73,6 +105,12 @@ export const buildProductAggregationPipeline = (
 ): PipelineStage[] => {
   const matchStage = buildProductMatchStage(query);
   const sortStage = buildProductSortStage(query);
+  const minRating =
+    typeof query.minRating === 'string' ? Number(query.minRating) : undefined;
+  const ratingMatchStage =
+    typeof minRating === 'number' && !Number.isNaN(minRating)
+      ? { averageRating: { $gte: minRating } }
+      : null;
 
   return [
     {
@@ -132,6 +170,7 @@ export const buildProductAggregationPipeline = (
         seedSource: 0,
       },
     },
+    ...(ratingMatchStage ? [{ $match: ratingMatchStage }] : []),
     {
       $facet: {
         meta: [{ $count: 'total' }],

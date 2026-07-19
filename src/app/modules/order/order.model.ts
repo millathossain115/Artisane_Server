@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import {
+  COURIER_PROVIDER,
   ORDER_STATUS,
   PAYMENT_METHOD,
   PAYMENT_STATUS,
@@ -79,6 +80,22 @@ const orderSchema = new Schema<IOrder>(
       required: [true, 'Contact phone is required'],
       trim: true,
     },
+    courierProvider: {
+      type: String,
+      enum: Object.keys(COURIER_PROVIDER),
+      trim: true,
+    },
+    courierOrderId: {
+      type: String,
+      trim: true,
+    },
+    courierStatus: {
+      type: String,
+      trim: true,
+    },
+    courierStatusRaw: {
+      type: Schema.Types.Mixed,
+    },
     paymentMethod: {
       type: String,
       enum: Object.keys(PAYMENT_METHOD),
@@ -113,12 +130,32 @@ const orderSchema = new Schema<IOrder>(
     orderStatus: {
       type: String,
       enum: Object.keys(ORDER_STATUS),
-      default: ORDER_STATUS.pending,
+      default: ORDER_STATUS.confirmed,
     },
     paymentStatus: {
       type: String,
       enum: Object.keys(PAYMENT_STATUS),
       default: PAYMENT_STATUS.unpaid,
+    },
+    trackingCode: {
+      type: String,
+      trim: true,
+    },
+    trackingUrl: {
+      type: String,
+      trim: true,
+    },
+    shipmentCreatedAt: {
+      type: Date,
+    },
+    lastCourierSyncAt: {
+      type: Date,
+    },
+    shippedAt: {
+      type: Date,
+    },
+    deliveredAt: {
+      type: Date,
     },
     notes: {
       type: String,
