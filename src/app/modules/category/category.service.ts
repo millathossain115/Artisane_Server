@@ -3,10 +3,13 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import type { PipelineStage } from 'mongoose';
 import type { ICategory } from './category.interface.js';
 import { Category } from './category.model.js';
 
-const buildCategoryMatchConditions = (query: Record<string, unknown>) => {
+const buildCategoryMatchConditions = (
+  query: Record<string, unknown>,
+): Record<string, unknown> => {
   const searchTerm =
     typeof query.searchTerm === 'string' ? query.searchTerm.trim() : '';
   const slug = typeof query.slug === 'string' ? query.slug.trim() : '';
@@ -43,10 +46,12 @@ const buildCategoryMatchConditions = (query: Record<string, unknown>) => {
     });
   }
 
-  return andConditions.length > 1 ? { $and: andConditions } : andConditions[0];
+  return andConditions.length > 1 ? { $and: andConditions } : andConditions[0]!;
 };
 
-const buildCategorySortConditions = (query: Record<string, unknown>) => {
+const buildCategorySortConditions = (
+  query: Record<string, unknown>,
+): Record<string, 1 | -1> => {
   const sortBy = typeof query.sortBy === 'string' ? query.sortBy : 'newest';
   const sortOrder =
     typeof query.sortOrder === 'string' ? query.sortOrder : 'desc';
@@ -80,10 +85,59 @@ const getAllCategoriesFromDB = async (query: Record<string, unknown>) => {
   const { page, limit, skip } = calculatePagination(query);
   const matchConditions = buildCategoryMatchConditions(query);
   const sortConditions = buildCategorySortConditions(query);
+  const pipeline: PipelineStage[] = [
+    {
+      $match: matchConditions,
+    },
+    {
+      $sort: sortConditions,
+    },
+    {
+      $skip: skip,
+    },
+    {
+      $limit: limit,
+    },
+    {
+      $lookup: {
+        from: 'products',
+        let: { categoryId: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$category', '$$categoryId'] },
+                  { $eq: ['$isDeleted', false] },
+                ],
+              },
+            },
+          },
+          {
+            $count: 'total',
+          },
+        ],
+        as: 'productCountMeta',
+      },
+    },
+    {
+      $addFields: {
+        productCount: {
+          $ifNull: [{ $arrayElemAt: ['$productCountMeta.total', 0] }, 0],
+        },
+      },
+    },
+    {
+      $project: {
+        productCountMeta: 0,
+        seedSource: 0,
+      },
+    },
+  ];
 
   const [total, result] = await Promise.all([
     Category.countDocuments(matchConditions),
-    Category.find(matchConditions).sort(sortConditions).skip(skip).limit(limit),
+    Category.aggregate(pipeline),
   ]);
 
   return {
