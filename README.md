@@ -100,6 +100,13 @@ JWT_ACCESS_SECRET=your_access_secret
 JWT_REFRESH_SECRET=your_refresh_secret
 JWT_ACCESS_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
+COURIER_SYNC_INTERVAL_MS=900000
+STEADFAST_API_KEY=your_steadfast_api_key
+STEADFAST_SECRET_KEY=your_steadfast_secret_key
+STEADFAST_BASE_URL=your_steadfast_base_url
+STEADFAST_DISTRICTS_PATH=/districts
+STEADFAST_ZONES_PATH=/districts/:districtId/zones
+STEADFAST_WEBHOOK_SECRET=optional_webhook_hmac_secret
 ```
 
 ## Installation
@@ -195,6 +202,8 @@ Supported product query params on `GET /products`:
 - `GET /orders/my-orders`
 - `GET /orders`
 - `GET /orders/:id`
+- `POST /orders/:id/shipment`
+- `POST /orders/:id/shipment/sync`
 - `PATCH /orders/:id/status`
 - `PATCH /orders/:id/cancel`
 - `DELETE /orders/:id`
@@ -202,9 +211,23 @@ Supported product query params on `GET /products`:
 Access rules:
 
 - `create-order` and `my-orders` require authenticated `admin` or `user`
-- `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`, and `DELETE /orders/:id` are admin only
+- `GET /orders`, `GET /orders/:id`, `POST /orders/:id/shipment`, `POST /orders/:id/shipment/sync`, `PATCH /orders/:id/status`, and `DELETE /orders/:id` are admin only
 - users can cancel only their own orders
 - admins can cancel any order
+- `POST /orders/:id/shipment` dispatches the order to Steadfast and stores `consignment_id`, `tracking_code`, and the raw courier response
+
+### Locations
+
+- `GET /locations/districts`
+- `GET /locations/districts/:districtId/zones`
+
+These public endpoints proxy Steadfast location data while keeping courier credentials on the server.
+
+### Delivery
+
+- `POST /delivery/webhook/steadfast`
+
+This public endpoint receives Steadfast status updates and updates matching orders by `consignment_id` or `invoice`. If `STEADFAST_WEBHOOK_SECRET` is set, send `x-steadfast-signature` as an HMAC SHA-256 hex digest of the JSON payload.
 
 ### Reviews
 

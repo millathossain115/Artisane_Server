@@ -9,7 +9,6 @@ import { Product } from '../product/product.model.js';
 import { User } from '../user/user.model.js';
 import { ShippingServices } from '../shipping/shipping.service.js';
 import {
-  COURIER_PROVIDER,
   CANCELLABLE_ORDER_STATUSES,
   ORDER_STATUS,
   ORDER_STATUS_TRANSITIONS,
@@ -252,6 +251,34 @@ const restoreOrderStock = async (items: IOrderItem[]) => {
   }
 };
 
+const normalizeBangladeshPhone = (phone: string) => {
+  const digits = phone.replace(/\D/g, '');
+
+  if (digits.length === 11 && digits.startsWith('01')) {
+    return digits;
+  }
+
+  if (digits.length === 13 && digits.startsWith('8801')) {
+    return `0${digits.slice(3)}`;
+  }
+
+  if (digits.length === 10 && digits.startsWith('1')) {
+    return `0${digits}`;
+  }
+
+  throw new AppError(
+    400,
+    'Steadfast recipient phone must be a valid Bangladesh 11 digit number',
+  );
+};
+
+const getOrderItemDescription = (order: IOrder) => {
+  return order.items
+    .map((item) => `${item.productName} x ${item.quantity}`)
+    .join(', ')
+    .slice(0, 250);
+};
+
 const createOrderIntoDB = async (
   userId: string,
   payload: ICreateOrderPayload,
@@ -377,23 +404,57 @@ const createShipmentIntoDB = async (
     throw new AppError(400, 'Shipment already exists for this order');
   }
 
-  if (!(payload.courierProvider in COURIER_PROVIDER)) {
-    throw new AppError(400, 'Invalid courier provider');
+  if (
+    order.paymentMethod !== PAYMENT_METHOD.cod &&
+    order.paymentStatus !== PAYMENT_STATUS.paid
+  ) {
+    throw new AppError(400, 'Paid payment is required before shipment dispatch');
   }
 
+  const user = await User.findOne({ _id: order.user, isDeleted: false });
+
+  if (!user) {
+    throw new AppError(404, 'Order user not found');
+  }
+
+  const recipientPhone = normalizeBangladeshPhone(order.contactPhone);
+  const shipment = await ShippingServices.createSteadfastOrder({
+    invoice: order.transactionId || order._id.toString(),
+    recipient_name: user.name.slice(0, 100),
+    recipient_phone: recipientPhone,
+    recipient_address: order.shippingAddress.slice(0, 250),
+    cod_amount:
+      order.paymentStatus === PAYMENT_STATUS.paid ? 0 : order.totalPrice,
+    item_description:
+      payload.itemDescription || getOrderItemDescription(order),
+    ...(payload.alternativePhone
+      ? {
+          alternative_phone: normalizeBangladeshPhone(
+            payload.alternativePhone,
+          ),
+        }
+      : {}),
+    ...(payload.deliveryType !== undefined
+      ? { delivery_type: payload.deliveryType }
+      : {}),
+    ...(payload.note ? { note: payload.note } : {}),
+    ...(payload.recipientEmail ? { recipient_email: payload.recipientEmail } : {}),
+    ...(payload.totalLot !== undefined ? { total_lot: payload.totalLot } : {}),
+  });
   const now = new Date();
 
   const result = await populateOrder(
     Order.findOneAndUpdate(
       { _id: id, isDeleted: false },
       {
-        courierOrderId: payload.courierOrderId,
-        courierProvider: payload.courierProvider,
-        courierStatus: 'shipment_created',
+        courierOrderId: shipment.consignmentId,
+        courierProvider: 'steadfast',
+        courierStatus: shipment.courierStatus,
+        courierStatusRaw: shipment.raw,
         orderStatus: ORDER_STATUS.processing,
         shipmentCreatedAt: now,
-        trackingCode: payload.trackingCode,
-        trackingUrl: payload.trackingUrl,
+        trackingCode: shipment.trackingCode,
+        trackingUrl: shipment.trackingUrl,
       },
       { new: true, runValidators: true },
     ),
@@ -625,6 +686,95 @@ const getPaymentPayloadValue = (
   return typeof value === 'string' ? value : '';
 };
 
+const getCourierPayloadRecord = (payload: Record<string, unknown>) => {
+  const data = payload.data;
+
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    return data as Record<string, unknown>;
+  }
+
+  return payload;
+};
+
+const getCourierPayloadValue = (
+  payload: Record<string, unknown>,
+  key: string,
+) => {
+  const record = getCourierPayloadRecord(payload);
+  const value = record[key] ?? payload[key];
+
+  return value === undefined || value === null ? '' : String(value);
+};
+
+const getSteadfastWebhookStatus = (payload: Record<string, unknown>) => {
+  const record = getCourierPayloadRecord(payload);
+
+  return (
+    record.delivery_status ??
+    record.consignment_status ??
+    record.current_status ??
+    record.status ??
+    payload.delivery_status ??
+    payload.consignment_status ??
+    payload.current_status ??
+    payload.status
+  );
+};
+
+const handleSteadfastWebhook = async (payload: Record<string, unknown>) => {
+  const consignmentId = getCourierPayloadValue(payload, 'consignment_id');
+  const invoice = getCourierPayloadValue(payload, 'invoice');
+
+  if (!consignmentId && !invoice) {
+    throw new AppError(400, 'Steadfast consignment_id or invoice is required');
+  }
+
+  const order = await Order.findOne({
+    isDeleted: false,
+    ...(consignmentId
+      ? { courierOrderId: consignmentId }
+      : { transactionId: invoice }),
+  });
+
+  if (!order) {
+    throw new AppError(404, 'Order not found for Steadfast webhook');
+  }
+
+  const courierStatus = ShippingServices.normalizeCourierStatus(
+    getSteadfastWebhookStatus(payload),
+  );
+  const mappedOrderStatus =
+    ShippingServices.mapCourierStatusToOrderStatus(courierStatus);
+  const now = new Date();
+  const update: Record<string, unknown> = {
+    courierStatus,
+    courierStatusRaw: payload,
+    lastCourierSyncAt: now,
+  };
+
+  if (mappedOrderStatus) {
+    update.orderStatus = mappedOrderStatus;
+
+    if (mappedOrderStatus === ORDER_STATUS.shipped && !order.shippedAt) {
+      update.shippedAt = now;
+    }
+
+    if (mappedOrderStatus === ORDER_STATUS.delivered) {
+      update.deliveredAt = order.deliveredAt || now;
+      update.shippedAt = order.shippedAt || now;
+    }
+  }
+
+  const result = await populateOrder(
+    Order.findOneAndUpdate({ _id: order._id, isDeleted: false }, update, {
+      new: true,
+      runValidators: true,
+    }),
+  );
+
+  return result;
+};
+
 const markOrderAsPaid = async (payload: Record<string, unknown>) => {
   const valId = getPaymentPayloadValue(payload, 'val_id');
 
@@ -766,5 +916,6 @@ export const OrderServices = {
   markOrderAsPaid,
   markOrderPaymentFailed,
   handleSslcommerzIpn,
+  handleSteadfastWebhook,
   deleteSingleOrderFromDB,
 };

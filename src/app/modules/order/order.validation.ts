@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import {
-  COURIER_PROVIDER,
-  ORDER_STATUS,
-  PAYMENT_METHOD,
-  PAYMENT_STATUS,
-} from './order.constant.js';
+import { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from './order.constant.js';
 
 const createOrderValidationSchema = z.object({
   items: z
@@ -53,23 +48,32 @@ const updateOrderStatusValidationSchema = z
     },
   );
 
-const createShipmentValidationSchema = z.object({
-  courierOrderId: z
-    .string()
-    .trim()
-    .min(1, { message: 'Courier order id is required' }),
-  courierProvider: z.enum(
-    Object.keys(COURIER_PROVIDER) as [string, ...string[]],
-  ),
-  trackingCode: z
-    .string()
-    .trim()
-    .min(1, { message: 'Tracking code is required' }),
-  trackingUrl: z
-    .string()
-    .trim()
-    .url({ message: 'Tracking URL must be valid' }),
-});
+const createShipmentValidationSchema = z
+  .object({
+    alternativePhone: z
+      .string()
+      .trim()
+      .max(20, { message: 'Alternative phone cannot exceed 20 characters' })
+      .optional(),
+    deliveryType: z.number().int().min(0).max(1).optional(),
+    itemDescription: z
+      .string()
+      .trim()
+      .max(250, { message: 'Item description cannot exceed 250 characters' })
+      .optional(),
+    note: z
+      .string()
+      .trim()
+      .max(250, { message: 'Note cannot exceed 250 characters' })
+      .optional(),
+    recipientEmail: z
+      .string()
+      .trim()
+      .email({ message: 'Recipient email must be valid' })
+      .optional(),
+    totalLot: z.number().int().min(1).optional(),
+  })
+  .default({});
 
 export const OrderValidations = {
   createOrderValidationSchema,

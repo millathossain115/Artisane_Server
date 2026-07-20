@@ -44,7 +44,7 @@ router.patch(
   validateRequest(OrderValidations.updateOrderStatusValidationSchema),
   OrderControllers.updateOrderStatus,
 );
-router.patch(
+router.post(
   '/:id/cancel',
   auth(USER_ROLE.admin, USER_ROLE.user),
   OrderControllers.cancelOrder,

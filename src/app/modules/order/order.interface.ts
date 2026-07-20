@@ -8,7 +8,7 @@ import type {
 export type TOrderStatus = keyof typeof ORDER_STATUS;
 export type TPaymentStatus = keyof typeof PAYMENT_STATUS;
 export type TPaymentMethod = keyof typeof PAYMENT_METHOD;
-export type TCourierProvider = 'redx' | 'steadfast' | 'pathao';
+export type TCourierProvider = 'steadfast';
 
 export interface IOrderItem {
   product: Types.ObjectId;
@@ -63,8 +63,10 @@ export interface ICreateOrderPayload {
 }
 
 export interface ICreateShipmentPayload {
-  courierOrderId: string;
-  courierProvider: TCourierProvider;
-  trackingCode: string;
-  trackingUrl: string;
+  alternativePhone?: string;
+  deliveryType?: number;
+  itemDescription?: string;
+  note?: string;
+  recipientEmail?: string;
+  totalLot?: number;
 }

@@ -23,9 +23,7 @@ export const PAYMENT_METHOD = {
 } as const;
 
 export const COURIER_PROVIDER = {
-  redx: 'redx',
   steadfast: 'steadfast',
-  pathao: 'pathao',
 } as const;
 
 export const ORDER_STATUS_TRANSITIONS = {

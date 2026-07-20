@@ -3,6 +3,8 @@ import config from '../../config/index.js';
 import { ORDER_STATUS } from '../order/order.constant.js';
 import type { IOrder, TCourierProvider } from '../order/order.interface.js';
 import type {
+  TCreateSteadfastOrderPayload,
+  TCreateSteadfastOrderResult,
   TCourierStatusResult,
   TNormalizedCourierStatus,
   TShippingProviderAdapter,
@@ -74,6 +76,27 @@ const requireConfigValue = (value: string | undefined, label: string) => {
   return value;
 };
 
+const getSteadfastBaseUrl = () => {
+  return requireConfigValue(
+    config.courier.steadfast.base_url,
+    'STEADFAST_BASE_URL',
+  ).replace(/\/$/, '');
+};
+
+const getSteadfastHeaders = (contentType?: string) => {
+  return {
+    'Api-Key': requireConfigValue(
+      config.courier.steadfast.api_key,
+      'STEADFAST_API_KEY',
+    ),
+    'Secret-Key': requireConfigValue(
+      config.courier.steadfast.secret_key,
+      'STEADFAST_SECRET_KEY',
+    ),
+    ...(contentType ? { 'Content-Type': contentType } : {}),
+  };
+};
+
 const fetchCourierStatus = async (
   provider: TCourierProvider,
   url: string,
@@ -99,85 +122,91 @@ const fetchCourierStatus = async (
   };
 };
 
-const redxAdapter: TShippingProviderAdapter = {
-  provider: 'redx',
-  getShipmentStatus: async (order: IOrder) => {
-    const baseUrl = requireConfigValue(config.courier.redx.base_url, 'REDX_BASE_URL');
-    const apiKey = requireConfigValue(config.courier.redx.api_key, 'REDX_API_KEY');
-    const trackingCode = requireConfigValue(order.trackingCode, 'Tracking code');
-
-    return fetchCourierStatus(
-      'redx',
-      `${baseUrl.replace(/\/$/, '')}/parcel/track/${encodeURIComponent(trackingCode)}`,
-      {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    );
-  },
-};
-
 const steadfastAdapter: TShippingProviderAdapter = {
   provider: 'steadfast',
   getShipmentStatus: async (order: IOrder) => {
-    const baseUrl = requireConfigValue(
-      config.courier.steadfast.base_url,
-      'STEADFAST_BASE_URL',
-    );
-    const apiKey = requireConfigValue(
-      config.courier.steadfast.api_key,
-      'STEADFAST_API_KEY',
-    );
-    const secretKey = requireConfigValue(
-      config.courier.steadfast.secret_key,
-      'STEADFAST_SECRET_KEY',
-    );
     const trackingCode = requireConfigValue(order.trackingCode, 'Tracking code');
 
     return fetchCourierStatus(
       'steadfast',
-      `${baseUrl.replace(/\/$/, '')}/status_by_trackingcode/${encodeURIComponent(trackingCode)}`,
-      {
-        'Api-Key': apiKey,
-        'Secret-Key': secretKey,
-      },
+      `${getSteadfastBaseUrl()}/status_by_trackingcode/${encodeURIComponent(trackingCode)}`,
+      getSteadfastHeaders(),
     );
   },
 };
 
-const pathaoAdapter: TShippingProviderAdapter = {
-  provider: 'pathao',
-  getShipmentStatus: async (order: IOrder) => {
-    const baseUrl = requireConfigValue(
-      config.courier.pathao.base_url,
-      'PATHAO_BASE_URL',
-    );
-    const clientId = requireConfigValue(
-      config.courier.pathao.client_id,
-      'PATHAO_CLIENT_ID',
-    );
-    const clientSecret = requireConfigValue(
-      config.courier.pathao.client_secret,
-      'PATHAO_CLIENT_SECRET',
-    );
-    const courierOrderId = requireConfigValue(
-      order.courierOrderId,
-      'Courier order id',
-    );
+const getPayloadRecord = (payload: unknown) => {
+  if (!payload || typeof payload !== 'object') {
+    return {};
+  }
 
-    return fetchCourierStatus(
-      'pathao',
-      `${baseUrl.replace(/\/$/, '')}/aladdin/api/v1/orders/${encodeURIComponent(courierOrderId)}/info`,
-      {
-        'X-Client-Id': clientId,
-        'X-Client-Secret': clientSecret,
-      },
-    );
-  },
+  const record = payload as Record<string, unknown>;
+
+  if (record.data && typeof record.data === 'object') {
+    return record.data as Record<string, unknown>;
+  }
+
+  return record;
+};
+
+const getStringValue = (record: Record<string, unknown>, key: string) => {
+  const value = record[key];
+
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  return String(value);
+};
+
+const buildSteadfastTrackingUrl = (trackingCode: string) => {
+  return `https://steadfast.com.bd/track/consignment/${encodeURIComponent(
+    trackingCode,
+  )}`;
+};
+
+const createSteadfastOrder = async (
+  payload: TCreateSteadfastOrderPayload,
+): Promise<TCreateSteadfastOrderResult> => {
+  const response = await fetch(`${getSteadfastBaseUrl()}/create_order`, {
+    body: JSON.stringify(payload),
+    headers: getSteadfastHeaders('application/json'),
+    method: 'POST',
+  });
+  const raw = (await response.json()) as unknown;
+
+  if (!response.ok) {
+    const message =
+      typeof raw === 'object' &&
+      raw &&
+      'message' in raw &&
+      typeof raw.message === 'string'
+        ? raw.message
+        : 'Steadfast shipment creation failed';
+
+    throw new AppError(response.status >= 500 ? 502 : response.status, message);
+  }
+
+  const record = getPayloadRecord(raw);
+  const consignmentId = getStringValue(record, 'consignment_id');
+  const trackingCode = getStringValue(record, 'tracking_code');
+
+  if (!consignmentId || !trackingCode) {
+    throw new AppError(502, 'Steadfast did not return shipment tracking data');
+  }
+
+  return {
+    consignmentId,
+    trackingCode,
+    trackingUrl:
+      getStringValue(record, 'tracking_url') ||
+      buildSteadfastTrackingUrl(trackingCode),
+    courierStatus: getStringValue(record, 'status') || 'shipment_created',
+    raw,
+  };
 };
 
 const adapterMap: Record<TCourierProvider, TShippingProviderAdapter> = {
-  pathao: pathaoAdapter,
-  redx: redxAdapter,
   steadfast: steadfastAdapter,
 };
 
@@ -192,6 +221,14 @@ const getProviderAdapter = (provider?: TCourierProvider) => {
 const mapCourierStatusToOrderStatus = (
   courierStatus: TNormalizedCourierStatus,
 ): TSyncOrderStatus | null => {
+  if (
+    courierStatus === 'cancelled' ||
+    courierStatus === 'failed' ||
+    courierStatus === 'returned'
+  ) {
+    return ORDER_STATUS.cancelled;
+  }
+
   if (courierStatus === 'delivered') {
     return ORDER_STATUS.delivered;
   }
@@ -222,6 +259,8 @@ const getShipmentStatus = async (order: IOrder): Promise<TCourierStatusResult> =
 };
 
 export const ShippingServices = {
+  createSteadfastOrder,
   getShipmentStatus,
   mapCourierStatusToOrderStatus,
+  normalizeCourierStatus,
 };
