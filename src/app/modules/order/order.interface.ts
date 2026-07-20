@@ -9,6 +9,7 @@ export type TOrderStatus = keyof typeof ORDER_STATUS;
 export type TPaymentStatus = keyof typeof PAYMENT_STATUS;
 export type TPaymentMethod = keyof typeof PAYMENT_METHOD;
 export type TCourierProvider = 'steadfast';
+export type TFraudRisk = 'high' | 'low' | 'medium';
 
 export interface IOrderItem {
   product: Types.ObjectId;
@@ -41,6 +42,9 @@ export interface IOrder {
   paymentStatus?: TPaymentStatus;
   trackingCode?: string;
   trackingUrl?: string;
+  fraudCheckedAt?: Date;
+  fraudFlags?: string[];
+  fraudRisk?: TFraudRisk;
   shipmentCreatedAt?: Date;
   lastCourierSyncAt?: Date;
   shippedAt?: Date;

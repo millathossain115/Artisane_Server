@@ -97,6 +97,49 @@ const getSteadfastHeaders = (contentType?: string) => {
   };
 };
 
+const readCourierResponseBody = async (response: Response) => {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
+  }
+};
+
+const getCourierErrorMessage = (raw: unknown, fallback: string) => {
+  if (typeof raw === 'string') {
+    return raw.trim() || fallback;
+  }
+
+  if (raw && typeof raw === 'object') {
+    const record = raw as Record<string, unknown>;
+    const data = record.data;
+
+    if (typeof record.message === 'string') {
+      return record.message;
+    }
+
+    if (typeof record.error === 'string') {
+      return record.error;
+    }
+
+    if (data && typeof data === 'object') {
+      const dataRecord = data as Record<string, unknown>;
+
+      if (typeof dataRecord.message === 'string') {
+        return dataRecord.message;
+      }
+    }
+  }
+
+  return fallback;
+};
+
 const fetchCourierStatus = async (
   provider: TCourierProvider,
   url: string,
@@ -106,15 +149,14 @@ const fetchCourierStatus = async (
     headers,
     method: 'GET',
   });
+  const raw = await readCourierResponseBody(response);
 
   if (!response.ok) {
     throw new AppError(
       response.status >= 500 ? 502 : response.status,
-      `${provider} shipment status sync failed`,
+      getCourierErrorMessage(raw, `${provider} shipment status sync failed`),
     );
   }
-
-  const raw = (await response.json()) as unknown;
 
   return {
     courierStatus: normalizeCourierStatus(extractStatusValue(raw)),
@@ -146,6 +188,10 @@ const getPayloadRecord = (payload: unknown) => {
     return record.data as Record<string, unknown>;
   }
 
+  if (record.consignment && typeof record.consignment === 'object') {
+    return record.consignment as Record<string, unknown>;
+  }
+
   return record;
 };
 
@@ -160,9 +206,7 @@ const getStringValue = (record: Record<string, unknown>, key: string) => {
 };
 
 const buildSteadfastTrackingUrl = (trackingCode: string) => {
-  return `https://steadfast.com.bd/track/consignment/${encodeURIComponent(
-    trackingCode,
-  )}`;
+  return `https://steadfast.com.bd/t/${encodeURIComponent(trackingCode)}`;
 };
 
 const createSteadfastOrder = async (
@@ -173,18 +217,13 @@ const createSteadfastOrder = async (
     headers: getSteadfastHeaders('application/json'),
     method: 'POST',
   });
-  const raw = (await response.json()) as unknown;
+  const raw = await readCourierResponseBody(response);
 
   if (!response.ok) {
-    const message =
-      typeof raw === 'object' &&
-      raw &&
-      'message' in raw &&
-      typeof raw.message === 'string'
-        ? raw.message
-        : 'Steadfast shipment creation failed';
-
-    throw new AppError(response.status >= 500 ? 502 : response.status, message);
+    throw new AppError(
+      response.status >= 500 ? 502 : response.status,
+      getCourierErrorMessage(raw, 'Steadfast shipment creation failed'),
+    );
   }
 
   const record = getPayloadRecord(raw);

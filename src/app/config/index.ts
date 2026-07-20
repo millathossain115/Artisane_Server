@@ -18,10 +18,11 @@ export default {
     steadfast: {
       api_key: process.env.STEADFAST_API_KEY,
       secret_key: process.env.STEADFAST_SECRET_KEY,
-      base_url: process.env.STEADFAST_BASE_URL,
-      districts_path: process.env.STEADFAST_DISTRICTS_PATH || '/districts',
-      zones_path:
-        process.env.STEADFAST_ZONES_PATH || '/districts/:districtId/zones',
+      base_url:
+        process.env.STEADFAST_BASE_URL || 'https://portal.packzy.com/api/v1',
+      districts_path:
+        process.env.STEADFAST_DISTRICTS_PATH || '/police_stations',
+      zones_path: process.env.STEADFAST_ZONES_PATH || '/police_stations',
     },
   },
   delivery: {

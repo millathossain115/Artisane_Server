@@ -279,6 +279,75 @@ const getOrderItemDescription = (order: IOrder) => {
     .slice(0, 250);
 };
 
+const FRAUD_LOOKBACK_24H_MS = 24 * 60 * 60 * 1000;
+const FRAUD_LOOKBACK_1H_MS = 60 * 60 * 1000;
+
+const assessFraudRisk = async (
+  userId: string,
+  contactPhone: string,
+  shippingAddress: string,
+  paymentMethod: string,
+  totalPrice: number,
+) => {
+  const since24h = new Date(Date.now() - FRAUD_LOOKBACK_24H_MS);
+  const since1h = new Date(Date.now() - FRAUD_LOOKBACK_1H_MS);
+
+  const [phoneOrders24h, userOpenOrders1h, addressOrders24h] =
+    await Promise.all([
+      Order.countDocuments({
+        contactPhone,
+        createdAt: { $gte: since24h },
+        isDeleted: false,
+      }),
+      Order.countDocuments({
+        createdAt: { $gte: since1h },
+        isDeleted: false,
+        orderStatus: {
+          $in: [
+            ORDER_STATUS.confirmed,
+            ORDER_STATUS.pending,
+            ORDER_STATUS.processing,
+          ],
+        },
+        user: userId,
+      }),
+      Order.countDocuments({
+        createdAt: { $gte: since24h },
+        isDeleted: false,
+        shippingAddress,
+      }),
+    ]);
+
+  const fraudFlags: string[] = [];
+
+  if (phoneOrders24h >= 3) {
+    fraudFlags.push('Repeated orders from same phone within 24 hours');
+  }
+
+  if (userOpenOrders1h >= 2) {
+    fraudFlags.push('Multiple open orders from same account within 1 hour');
+  }
+
+  if (addressOrders24h >= 5) {
+    fraudFlags.push('Many orders sent to same address within 24 hours');
+  }
+
+  if (paymentMethod === PAYMENT_METHOD.cod && totalPrice >= 15000) {
+    fraudFlags.push('High value COD order');
+  }
+
+  return {
+    fraudCheckedAt: new Date(),
+    fraudFlags,
+    fraudRisk:
+      fraudFlags.length >= 3
+        ? ('high' as const)
+        : fraudFlags.length > 0
+          ? ('medium' as const)
+          : ('low' as const),
+  };
+};
+
 const createOrderIntoDB = async (
   userId: string,
   payload: ICreateOrderPayload,
@@ -322,6 +391,14 @@ const createOrderIntoDB = async (
     totalPrice += subtotal;
   }
 
+  const fraudCheck = await assessFraudRisk(
+    userId,
+    payload.contactPhone,
+    payload.shippingAddress,
+    payload.paymentMethod,
+    totalPrice,
+  );
+
   for (const item of payload.items) {
     const product = await Product.findById(item.product);
 
@@ -337,6 +414,7 @@ const createOrderIntoDB = async (
     user: user._id,
     items: orderItems,
     totalPrice,
+    ...fraudCheck,
     shippingAddress: payload.shippingAddress,
     contactPhone: payload.contactPhone,
     paymentMethod: payload.paymentMethod,

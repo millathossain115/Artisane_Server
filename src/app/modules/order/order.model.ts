@@ -145,6 +145,18 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       trim: true,
     },
+    fraudCheckedAt: {
+      type: Date,
+    },
+    fraudFlags: {
+      type: [String],
+      default: [],
+    },
+    fraudRisk: {
+      type: String,
+      enum: ['low', 'medium', 'high'],
+      default: 'low',
+    },
     shipmentCreatedAt: {
       type: Date,
     },
