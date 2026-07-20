@@ -13,6 +13,9 @@ export default {
   jwt_access_expires_in: process.env.JWT_ACCESS_EXPIRES_IN,
   jwt_refresh_expires_in: process.env.JWT_REFRESH_EXPIRES_IN,
   frontend_url: process.env.FRONTEND_URL || 'http://localhost:5173',
+  google: {
+    client_id: process.env.GOOGLE_CLIENT_ID,
+  },
   courier: {
     sync_interval_ms: Number(process.env.COURIER_SYNC_INTERVAL_MS || 900000),
     steadfast: {

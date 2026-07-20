@@ -34,6 +34,13 @@ const loginUserValidationSchema = z.object({
   password: z.string().min(1, { message: 'Password is required' }),
 });
 
+const googleAuthValidationSchema = z.object({
+  credential: z
+    .string()
+    .trim()
+    .min(1, { message: 'Google credential is required' }),
+});
+
 const updateMyProfileValidationSchema = z
   .object({
     name: z
@@ -73,5 +80,6 @@ const updateMyProfileValidationSchema = z
 export const AuthValidations = {
   registerUserValidationSchema,
   loginUserValidationSchema,
+  googleAuthValidationSchema,
   updateMyProfileValidationSchema,
 };

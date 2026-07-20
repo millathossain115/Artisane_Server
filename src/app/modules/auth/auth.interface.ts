@@ -24,6 +24,10 @@ export interface ILoginUser {
   password: string;
 }
 
+export interface IGoogleAuthPayload {
+  credential: string;
+}
+
 export interface IJwtPayload {
   userId: string;
   email: string;

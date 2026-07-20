@@ -19,6 +19,12 @@ router.post(
   AuthControllers.loginUser,
 );
 
+router.post(
+  '/google',
+  validateRequest(AuthValidations.googleAuthValidationSchema),
+  AuthControllers.googleLogin,
+);
+
 router.get('/me', auth(USER_ROLE.admin, USER_ROLE.user), AuthControllers.getMe);
 
 router.patch(

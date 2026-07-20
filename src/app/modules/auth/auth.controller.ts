@@ -26,6 +26,17 @@ const loginUser = catchAsync(async (req, res) => {
   });
 });
 
+const googleLogin = catchAsync(async (req, res) => {
+  const result = await AuthServices.loginWithGoogle(req.body);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'User logged in with Google successfully',
+    data: result,
+  });
+});
+
 const getMe = catchAsync(async (req, res) => {
   //console.log('Auth.getMe req.user: ', req.user);
   const result = await AuthServices.getMe(req.user.userId);
@@ -55,6 +66,7 @@ const updateMyProfile = catchAsync(async (req, res) => {
 export const AuthControllers = {
   registerUser,
   loginUser,
+  googleLogin,
   getMe,
   updateMyProfile,
 };
