@@ -14,13 +14,25 @@ import type {
 const COURIER_STATUS_ALIASES: Record<TNormalizedCourierStatus, string[]> = {
   cancelled: ['cancelled', 'canceled'],
   delivered: ['delivered', 'complete', 'completed', 'delivered_to_customer'],
-  failed: ['failed', 'delivery_failed', 'hold', 'lost'],
+  failed: ['failed', 'delivery_failed', 'lost'],
   in_transit: ['in_transit', 'transit', 'on_the_way'],
   out_for_delivery: ['out_for_delivery', 'ofd'],
   pending_pickup: ['pending_pickup', 'ready_for_pickup', 'assigned'],
   picked_up: ['picked_up', 'picked', 'pickup_done'],
   returned: ['returned', 'return', 'rto', 'return_to_origin'],
-  shipment_created: ['shipment_created', 'created', 'consignment_created'],
+  shipment_created: [
+    'cancelled_approval_pending',
+    'consignment_created',
+    'created',
+    'delivered_approval_pending',
+    'hold',
+    'in_review',
+    'partial_delivered',
+    'partial_delivered_approval_pending',
+    'pending',
+    'shipment_created',
+    'unknown_approval_pending',
+  ],
   unknown: ['unknown'],
 };
 
@@ -32,7 +44,16 @@ const normalizeCourierStatus = (value: unknown): TNormalizedCourierStatus => {
     .replaceAll(' ', '_');
 
   for (const [status, aliases] of Object.entries(COURIER_STATUS_ALIASES)) {
-    if (aliases.some((alias) => normalized.includes(alias))) {
+    if (aliases.some((alias) => normalized === alias)) {
+      return status as TNormalizedCourierStatus;
+    }
+  }
+
+  for (const [status, aliases] of Object.entries(COURIER_STATUS_ALIASES)) {
+    if (
+      status !== 'delivered' &&
+      aliases.some((alias) => normalized.includes(alias))
+    ) {
       return status as TNormalizedCourierStatus;
     }
   }
@@ -167,7 +188,10 @@ const fetchCourierStatus = async (
 const steadfastAdapter: TShippingProviderAdapter = {
   provider: 'steadfast',
   getShipmentStatus: async (order: IOrder) => {
-    const trackingCode = requireConfigValue(order.trackingCode, 'Tracking code');
+    const trackingCode = requireConfigValue(
+      order.trackingCode,
+      'Tracking code',
+    );
 
     return fetchCourierStatus(
       'steadfast',
@@ -291,7 +315,9 @@ const mapCourierStatusToOrderStatus = (
   return null;
 };
 
-const getShipmentStatus = async (order: IOrder): Promise<TCourierStatusResult> => {
+const getShipmentStatus = async (
+  order: IOrder,
+): Promise<TCourierStatusResult> => {
   const adapter = getProviderAdapter(order.courierProvider);
 
   return adapter.getShipmentStatus(order);

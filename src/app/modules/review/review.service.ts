@@ -3,11 +3,14 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import { ORDER_STATUS, PAYMENT_STATUS } from '../order/order.constant.js';
+import { Order } from '../order/order.model.js';
 import { Product } from '../product/product.model.js';
 import { User } from '../user/user.model.js';
 import type {
   ICreateReviewPayload,
   IUpdateReviewPayload,
+  IUpdateReviewVisibilityPayload,
 } from './review.interface.js';
 import { Review } from './review.model.js';
 
@@ -15,13 +18,57 @@ const reviewPopulate = [
   { path: 'user', select: 'name email role' },
   {
     path: 'product',
-    select: 'name slug price category',
+    select: 'name slug price category images',
     populate: {
       path: 'category',
       select: 'name slug',
     },
   },
+  { path: 'hiddenBy', select: 'name email role' },
 ] as const;
+
+const publicReviewFilter = {
+  isDeleted: false,
+  isHidden: { $ne: true },
+};
+
+const activeReviewFilter = {
+  isDeleted: false,
+};
+
+const getReviewableProductIds = async (userId: string) => {
+  const deliveredPaidOrders = await Order.find({
+    isDeleted: false,
+    orderStatus: ORDER_STATUS.delivered,
+    paymentStatus: PAYMENT_STATUS.paid,
+    user: userId,
+  }).select('items.product');
+
+  return [
+    ...new Set(
+      deliveredPaidOrders.flatMap((order) =>
+        order.items.map((item) => item.product.toString()),
+      ),
+    ),
+  ];
+};
+
+const assertProductIsReviewable = async (userId: string, productId: string) => {
+  const purchasedDeliveredPaidOrder = await Order.exists({
+    isDeleted: false,
+    items: { $elemMatch: { product: productId } },
+    orderStatus: ORDER_STATUS.delivered,
+    paymentStatus: PAYMENT_STATUS.paid,
+    user: userId,
+  });
+
+  if (!purchasedDeliveredPaidOrder) {
+    throw new AppError(
+      403,
+      'You can review only purchased, delivered, paid products',
+    );
+  }
+};
 
 const createReviewIntoDB = async (
   userId: string,
@@ -45,12 +92,18 @@ const createReviewIntoDB = async (
   const existingReview = await Review.findOne({
     user: userId,
     product: payload.product,
-    isDeleted: false,
   });
 
   if (existingReview) {
-    throw new AppError(409, 'You have already reviewed this product');
+    throw new AppError(
+      409,
+      existingReview.isDeleted
+        ? 'Deleted review cannot be recreated for this product'
+        : 'You have already reviewed this product',
+    );
   }
+
+  await assertProductIsReviewable(userId, payload.product);
 
   const createdReview = await Review.create({
     user: user._id,
@@ -69,8 +122,8 @@ const createReviewIntoDB = async (
 const getAllReviewsFromDB = async (query: Record<string, unknown>) => {
   const { page, limit, skip } = calculatePagination(query);
   const [total, result] = await Promise.all([
-    Review.countDocuments({ isDeleted: false }),
-    Review.find({ isDeleted: false })
+    Review.countDocuments(publicReviewFilter),
+    Review.find(publicReviewFilter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -90,8 +143,8 @@ const getReviewsByProductFromDB = async (
 ) => {
   const { page, limit, skip } = calculatePagination(query);
   const [total, result] = await Promise.all([
-    Review.countDocuments({ product: productId, isDeleted: false }),
-    Review.find({ product: productId, isDeleted: false })
+    Review.countDocuments({ ...publicReviewFilter, product: productId }),
+    Review.find({ ...publicReviewFilter, product: productId })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -106,11 +159,83 @@ const getReviewsByProductFromDB = async (
 };
 
 const getSingleReviewFromDB = async (id: string) => {
-  const result = await Review.findOne({ _id: id, isDeleted: false })
+  const result = await Review.findOne({ _id: id, ...publicReviewFilter })
     .populate(reviewPopulate[0])
-    .populate(reviewPopulate[1]);
+    .populate(reviewPopulate[1])
+    .populate(reviewPopulate[2]);
 
   return result;
+};
+
+const getAdminReviewsFromDB = async (query: Record<string, unknown>) => {
+  const { page, limit, skip } = calculatePagination(query);
+  const [total, result] = await Promise.all([
+    Review.countDocuments(activeReviewFilter),
+    Review.find(activeReviewFilter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate(reviewPopulate[0])
+      .populate(reviewPopulate[1])
+      .populate(reviewPopulate[2]),
+  ]);
+
+  return {
+    meta: buildPaginationMeta(page, limit, total),
+    result,
+  };
+};
+
+const getMyReviewsFromDB = async (
+  userId: string,
+  query: Record<string, unknown>,
+) => {
+  const { page, limit, skip } = calculatePagination(query);
+  const [total, result] = await Promise.all([
+    Review.countDocuments({ ...activeReviewFilter, user: userId }),
+    Review.find({ ...activeReviewFilter, user: userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate(reviewPopulate[0])
+      .populate(reviewPopulate[1])
+      .populate(reviewPopulate[2]),
+  ]);
+
+  return {
+    meta: buildPaginationMeta(page, limit, total),
+    result,
+  };
+};
+
+const getReviewableProductsFromDB = async (userId: string) => {
+  const purchasedProductIds = await getReviewableProductIds(userId);
+
+  if (!purchasedProductIds.length) {
+    return [];
+  }
+
+  const reviewedProducts = await Review.find({
+    product: { $in: purchasedProductIds },
+    user: userId,
+  }).select('product');
+  const reviewedProductIds = new Set(
+    reviewedProducts.map((review) => review.product.toString()),
+  );
+  const reviewableProductIds = purchasedProductIds.filter(
+    (productId) => !reviewedProductIds.has(productId),
+  );
+
+  if (!reviewableProductIds.length) {
+    return [];
+  }
+
+  return Product.find({
+    _id: { $in: reviewableProductIds },
+    isDeleted: false,
+  })
+    .sort({ createdAt: -1 })
+    .populate('category', 'name slug');
 };
 
 const updateReviewIntoDB = async (
@@ -166,11 +291,52 @@ const deleteSingleReviewFromDB = async (
   return result;
 };
 
+const updateReviewVisibilityIntoDB = async (
+  id: string,
+  adminId: string,
+  payload: IUpdateReviewVisibilityPayload,
+) => {
+  const review = await Review.findOne({ _id: id, isDeleted: false });
+
+  if (!review) {
+    throw new AppError(404, 'Review not found');
+  }
+
+  const update = payload.isHidden
+    ? {
+        isHidden: true,
+        hiddenAt: new Date(),
+        hiddenBy: adminId,
+      }
+    : {
+        $unset: {
+          hiddenAt: '',
+          hiddenBy: '',
+        },
+        isHidden: false,
+      };
+
+  const result = await Review.findOneAndUpdate(
+    { _id: id, isDeleted: false },
+    update,
+    { new: true, runValidators: true },
+  )
+    .populate(reviewPopulate[0])
+    .populate(reviewPopulate[1])
+    .populate(reviewPopulate[2]);
+
+  return result;
+};
+
 export const ReviewServices = {
   createReviewIntoDB,
+  getAdminReviewsFromDB,
   getAllReviewsFromDB,
+  getMyReviewsFromDB,
+  getReviewableProductsFromDB,
   getReviewsByProductFromDB,
   getSingleReviewFromDB,
   updateReviewIntoDB,
+  updateReviewVisibilityIntoDB,
   deleteSingleReviewFromDB,
 };

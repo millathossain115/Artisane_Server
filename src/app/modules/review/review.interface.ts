@@ -5,6 +5,9 @@ export interface IReview {
   product: Types.ObjectId;
   rating: number;
   comment?: string;
+  isHidden?: boolean;
+  hiddenAt?: Date;
+  hiddenBy?: Types.ObjectId;
   isDeleted?: boolean;
 }
 
@@ -17,4 +20,8 @@ export interface ICreateReviewPayload {
 export interface IUpdateReviewPayload {
   rating?: number;
   comment?: string;
+}
+
+export interface IUpdateReviewVisibilityPayload {
+  isHidden: boolean;
 }

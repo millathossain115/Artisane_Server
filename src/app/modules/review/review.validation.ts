@@ -26,7 +26,12 @@ const updateReviewValidationSchema = z.object({
     .optional(),
 });
 
+const updateReviewVisibilityValidationSchema = z.object({
+  isHidden: z.boolean(),
+});
+
 export const ReviewValidations = {
   createReviewValidationSchema,
   updateReviewValidationSchema,
+  updateReviewVisibilityValidationSchema,
 };

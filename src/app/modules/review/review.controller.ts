@@ -29,6 +29,46 @@ const getAllReviews = catchAsync(async (req, res) => {
   });
 });
 
+const getAdminReviews = catchAsync(async (req, res) => {
+  const result = await ReviewServices.getAdminReviewsFromDB(req.query);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Admin reviews retrieved successfully',
+    meta: { ...result.meta },
+    data: result.result,
+  });
+});
+
+const getMyReviews = catchAsync(async (req, res) => {
+  const result = await ReviewServices.getMyReviewsFromDB(
+    req.user.userId,
+    req.query,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'My reviews retrieved successfully',
+    meta: { ...result.meta },
+    data: result.result,
+  });
+});
+
+const getReviewableProducts = catchAsync(async (req, res) => {
+  const result = await ReviewServices.getReviewableProductsFromDB(
+    req.user.userId,
+  );
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Reviewable products retrieved successfully',
+    data: result,
+  });
+});
+
 const getReviewsByProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
 
@@ -97,6 +137,31 @@ const updateReview = catchAsync(async (req, res) => {
   });
 });
 
+const updateReviewVisibility = catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id || Array.isArray(id)) {
+    throw new AppError(400, 'Review id is required');
+  }
+
+  const result = await ReviewServices.updateReviewVisibilityIntoDB(
+    id,
+    req.user.userId,
+    req.body,
+  );
+
+  if (!result) {
+    throw new AppError(404, 'Review not found');
+  }
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Review visibility updated successfully',
+    data: result,
+  });
+});
+
 const deleteSingleReview = catchAsync(async (req, res) => {
   const { id } = req.params;
 
@@ -124,9 +189,13 @@ const deleteSingleReview = catchAsync(async (req, res) => {
 
 export const ReviewControllers = {
   createReview,
+  getAdminReviews,
   getAllReviews,
+  getMyReviews,
+  getReviewableProducts,
   getReviewsByProduct,
   getSingleReview,
   updateReview,
+  updateReviewVisibility,
   deleteSingleReview,
 };

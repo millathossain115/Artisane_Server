@@ -13,9 +13,26 @@ router.post(
   validateRequest(ReviewValidations.createReviewValidationSchema),
   ReviewControllers.createReview,
 );
+router.get('/admin', auth(USER_ROLE.admin), ReviewControllers.getAdminReviews);
+router.get(
+  '/my-reviews',
+  auth(USER_ROLE.admin, USER_ROLE.user),
+  ReviewControllers.getMyReviews,
+);
+router.get(
+  '/reviewable-products',
+  auth(USER_ROLE.admin, USER_ROLE.user),
+  ReviewControllers.getReviewableProducts,
+);
 router.get('/', ReviewControllers.getAllReviews);
 router.get('/product/:productId', ReviewControllers.getReviewsByProduct);
 router.get('/:id', ReviewControllers.getSingleReview);
+router.patch(
+  '/:id/visibility',
+  auth(USER_ROLE.admin),
+  validateRequest(ReviewValidations.updateReviewVisibilityValidationSchema),
+  ReviewControllers.updateReviewVisibility,
+);
 router.patch(
   '/:id',
   auth(USER_ROLE.admin, USER_ROLE.user),

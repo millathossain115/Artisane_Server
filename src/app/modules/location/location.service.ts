@@ -17,13 +17,6 @@ type TSteadfastDistrict = {
   policestations?: TSteadfastPoliceStation[];
 };
 
-type TSteadfastLocationPayload =
-  | TSteadfastDistrict[]
-  | {
-      data?: TSteadfastDistrict[];
-      status?: number | string;
-    };
-
 type TDistrictResponse = {
   id: string;
   name: string;
@@ -133,9 +126,7 @@ const getStringValue = (value: unknown) => {
   return String(value);
 };
 
-const normalizeDistrict = (
-  district: TSteadfastDistrict,
-): TDistrictResponse => {
+const normalizeDistrict = (district: TSteadfastDistrict): TDistrictResponse => {
   const id = getStringValue(district.id);
   const name = getStringValue(district.name);
 

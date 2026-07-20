@@ -187,8 +187,7 @@ const initiateSslcommerzPayment = async (
     throw new AppError(502, 'Failed to connect with SSLCommerz');
   }
 
-  const sessionData =
-    (await response.json()) as TSslcommerzSessionResponse;
+  const sessionData = (await response.json()) as TSslcommerzSessionResponse;
 
   if (sessionData.status !== 'SUCCESS') {
     throw new AppError(
@@ -348,6 +347,21 @@ const assessFraudRisk = async (
   };
 };
 
+const getCodDeliveredPaymentUpdate = (order: IOrder, now: Date) => {
+  if (
+    order.paymentMethod === PAYMENT_METHOD.cod &&
+    order.orderStatus === ORDER_STATUS.delivered &&
+    order.paymentStatus !== PAYMENT_STATUS.paid
+  ) {
+    return {
+      paidAt: order.paidAt || now,
+      paymentStatus: PAYMENT_STATUS.paid,
+    };
+  }
+
+  return {};
+};
+
 const createOrderIntoDB = async (
   userId: string,
   payload: ICreateOrderPayload,
@@ -486,7 +500,10 @@ const createShipmentIntoDB = async (
     order.paymentMethod !== PAYMENT_METHOD.cod &&
     order.paymentStatus !== PAYMENT_STATUS.paid
   ) {
-    throw new AppError(400, 'Paid payment is required before shipment dispatch');
+    throw new AppError(
+      400,
+      'Paid payment is required before shipment dispatch',
+    );
   }
 
   const user = await User.findOne({ _id: order.user, isDeleted: false });
@@ -503,20 +520,19 @@ const createShipmentIntoDB = async (
     recipient_address: order.shippingAddress.slice(0, 250),
     cod_amount:
       order.paymentStatus === PAYMENT_STATUS.paid ? 0 : order.totalPrice,
-    item_description:
-      payload.itemDescription || getOrderItemDescription(order),
+    item_description: payload.itemDescription || getOrderItemDescription(order),
     ...(payload.alternativePhone
       ? {
-          alternative_phone: normalizeBangladeshPhone(
-            payload.alternativePhone,
-          ),
+          alternative_phone: normalizeBangladeshPhone(payload.alternativePhone),
         }
       : {}),
     ...(payload.deliveryType !== undefined
       ? { delivery_type: payload.deliveryType }
       : {}),
     ...(payload.note ? { note: payload.note } : {}),
-    ...(payload.recipientEmail ? { recipient_email: payload.recipientEmail } : {}),
+    ...(payload.recipientEmail
+      ? { recipient_email: payload.recipientEmail }
+      : {}),
     ...(payload.totalLot !== undefined ? { total_lot: payload.totalLot } : {}),
   });
   const now = new Date();
@@ -556,7 +572,10 @@ const syncShipmentIntoDB = async (id: string) => {
     order.orderStatus === ORDER_STATUS.cancelled ||
     order.orderStatus === ORDER_STATUS.delivered
   ) {
-    throw new AppError(400, `Order cannot sync when status is ${order.orderStatus}`);
+    throw new AppError(
+      400,
+      `Order cannot sync when status is ${order.orderStatus}`,
+    );
   }
 
   const shipmentStatus = await ShippingServices.getShipmentStatus(order);
@@ -572,6 +591,10 @@ const syncShipmentIntoDB = async (id: string) => {
 
   if (mappedOrderStatus) {
     update.orderStatus = mappedOrderStatus;
+    const nextOrder = {
+      ...order.toObject(),
+      orderStatus: mappedOrderStatus,
+    } as IOrder;
 
     if (mappedOrderStatus === ORDER_STATUS.shipped && !order.shippedAt) {
       update.shippedAt = now;
@@ -581,6 +604,8 @@ const syncShipmentIntoDB = async (id: string) => {
       update.deliveredAt = order.deliveredAt || now;
       update.shippedAt = order.shippedAt || now;
     }
+
+    Object.assign(update, getCodDeliveredPaymentUpdate(nextOrder, now));
   }
 
   const result = await populateOrder(
@@ -698,8 +723,22 @@ const updateOrderStatusIntoDB = async (
     }
   }
 
+  const now = new Date();
+  const update: Record<string, unknown> = { ...payload };
+  const nextOrder = {
+    ...order.toObject(),
+    ...payload,
+  } as IOrder;
+
+  if (payload.orderStatus === ORDER_STATUS.delivered) {
+    update.deliveredAt = order.deliveredAt || now;
+    update.shippedAt = order.shippedAt || now;
+  }
+
+  Object.assign(update, getCodDeliveredPaymentUpdate(nextOrder, now));
+
   const result = await populateOrder(
-    Order.findOneAndUpdate({ _id: id, isDeleted: false }, payload, {
+    Order.findOneAndUpdate({ _id: id, isDeleted: false }, update, {
       new: true,
       runValidators: true,
     }),
@@ -832,6 +871,10 @@ const handleSteadfastWebhook = async (payload: Record<string, unknown>) => {
 
   if (mappedOrderStatus) {
     update.orderStatus = mappedOrderStatus;
+    const nextOrder = {
+      ...order.toObject(),
+      orderStatus: mappedOrderStatus,
+    } as IOrder;
 
     if (mappedOrderStatus === ORDER_STATUS.shipped && !order.shippedAt) {
       update.shippedAt = now;
@@ -841,6 +884,8 @@ const handleSteadfastWebhook = async (payload: Record<string, unknown>) => {
       update.deliveredAt = order.deliveredAt || now;
       update.shippedAt = order.shippedAt || now;
     }
+
+    Object.assign(update, getCodDeliveredPaymentUpdate(nextOrder, now));
   }
 
   const result = await populateOrder(

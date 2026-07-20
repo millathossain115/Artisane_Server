@@ -23,6 +23,17 @@ const reviewSchema = new Schema<IReview>(
       type: String,
       trim: true,
     },
+    isHidden: {
+      type: Boolean,
+      default: false,
+    },
+    hiddenAt: {
+      type: Date,
+    },
+    hiddenBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+    },
     isDeleted: {
       type: Boolean,
       default: false,
@@ -34,5 +45,6 @@ const reviewSchema = new Schema<IReview>(
 );
 
 reviewSchema.index({ user: 1, product: 1 }, { unique: true });
+reviewSchema.index({ product: 1, isDeleted: 1, isHidden: 1 });
 
 export const Review = model<IReview>('Review', reviewSchema);
