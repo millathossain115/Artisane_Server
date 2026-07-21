@@ -2,21 +2,21 @@ import type { Request } from 'express';
 import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
+import { uploadImageToCloudinary } from '../../utils/cloudinary.js';
 import { ProductServices } from './product.service.js';
 
-const getUploadedImageUrls = (req: Request) => {
+const getUploadedImageUrls = async (req: Request) => {
   if (!Array.isArray(req.files) || req.files.length === 0) {
     return undefined;
   }
 
-  return req.files.map(
-    (file) =>
-      `${req.protocol}://${req.get('host')}/uploads/products/${file.filename}`,
+  return Promise.all(
+    req.files.map((file) => uploadImageToCloudinary(file, 'artisane/products')),
   );
 };
 
 const createProduct = catchAsync(async (req, res) => {
-  const images = getUploadedImageUrls(req);
+  const images = await getUploadedImageUrls(req);
   const result = await ProductServices.createProductIntoDB({
     ...req.body,
     ...(images ? { images } : {}),
@@ -70,7 +70,7 @@ const updateProduct = catchAsync(async (req, res) => {
     throw new AppError(400, 'Product id is required');
   }
 
-  const images = getUploadedImageUrls(req);
+  const images = await getUploadedImageUrls(req);
   const result = await ProductServices.updateProductIntoDB(id, {
     ...req.body,
     ...(images ? { images } : {}),

@@ -2,21 +2,20 @@ import type { Request } from 'express';
 import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
+import { uploadImageToCloudinary } from '../../utils/cloudinary.js';
 import { CategoryServices } from './category.service.js';
 
-const getUploadedImageUrl = (req: Request) => {
+const getUploadedImageUrl = async (req: Request) => {
   if (!req.file) {
     return undefined;
   }
 
-  return `${req.protocol}://${req.get('host')}/uploads/categories/${
-    req.file.filename
-  }`;
+  return uploadImageToCloudinary(req.file, 'artisane/categories');
 };
 
 const createCategory = catchAsync(async (req, res) => {
   console.log('Category.create req.body: ', req.body);
-  const image = getUploadedImageUrl(req);
+  const image = await getUploadedImageUrl(req);
   const result = await CategoryServices.createCategoryIntoDB({
     ...req.body,
     ...(image ? { image } : {}),
@@ -71,7 +70,7 @@ const updateCategory = catchAsync(async (req, res) => {
     throw new AppError(400, 'Category id is required');
   }
 
-  const image = getUploadedImageUrl(req);
+  const image = await getUploadedImageUrl(req);
   const result = await CategoryServices.updateCategoryIntoDB(id, {
     ...req.body,
     ...(image ? { image } : {}),

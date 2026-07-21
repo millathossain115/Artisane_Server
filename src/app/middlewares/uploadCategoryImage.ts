@@ -1,25 +1,7 @@
-import fs from 'fs';
-import path from 'path';
 import multer from 'multer';
 import AppError from '../errors/appError.js';
 
-const categoryUploadDir = path.join(process.cwd(), 'uploads', 'categories');
-
-fs.mkdirSync(categoryUploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, categoryUploadDir);
-  },
-  filename: (_req, file, cb) => {
-    const extension = path.extname(file.originalname);
-    const uniqueName = `category-${Date.now()}-${Math.round(
-      Math.random() * 1e9,
-    )}${extension}`;
-
-    cb(null, uniqueName);
-  },
-});
+const storage = multer.memoryStorage();
 
 const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
   if (file.mimetype.startsWith('image/')) {
