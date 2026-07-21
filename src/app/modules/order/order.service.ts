@@ -687,10 +687,13 @@ const getAllOrdersFromDB = async (query: Record<string, unknown>) => {
   };
 };
 
-const getSingleOrderFromDB = async (id: string) => {
-  const result = await populateOrder(
-    Order.findOne({ _id: id, isDeleted: false }),
-  );
+const getSingleOrderFromDB = async (id: string, userId?: string) => {
+  const filter: Record<string, unknown> = { _id: id, isDeleted: false };
+  if (userId) {
+    filter.user = userId;
+  }
+
+  const result = await populateOrder(Order.findOne(filter));
 
   return result;
 };

@@ -2,6 +2,7 @@ import AppError from '../../errors/appError.js';
 import config from '../../config/index.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
+import { USER_ROLE } from '../user/user.constant.js';
 import { OrderServices } from './order.service.js';
 
 const getPaymentCallbackPayload = (req: {
@@ -77,7 +78,10 @@ const getSingleOrder = catchAsync(async (req, res) => {
     throw new AppError(400, 'Order id is required');
   }
 
-  const result = await OrderServices.getSingleOrderFromDB(id);
+  const result = await OrderServices.getSingleOrderFromDB(
+    id,
+    req.user?.role === USER_ROLE.admin ? undefined : req.user?.userId,
+  );
 
   if (!result) {
     throw new AppError(404, 'Order not found');
