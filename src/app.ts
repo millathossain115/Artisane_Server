@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Application, Request, Response } from 'express';
 import cors from 'cors';
+import ensureDatabaseConnected from './app/middlewares/ensureDatabaseConnected.js';
 import globalErrorHandler from './app/middlewares/globalErrorHandler.js';
 import notFoundRoute from './app/middlewares/notFoundRoute.js';
 import router from './app/routes/index.js';
@@ -19,6 +20,10 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Artisane Server is running');
 });
 
+app.use(
+  /^\/(?:api\/v1\/)?(?:auth|users|categories|dashboard|delivery|products|orders|locations|reviews|wishlists)(?:\/|$)/,
+  ensureDatabaseConnected,
+);
 app.use('/api/v1', router);
 app.use(router);
 app.use(notFoundRoute);
