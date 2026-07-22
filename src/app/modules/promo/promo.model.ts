@@ -8,6 +8,8 @@ export interface IPromoBanner {
   description?: string;
   endsAt: Date;
   isActive: boolean;
+  enableAutoDiscount?: boolean;
+  enableVoucher?: boolean;
   buttonText?: string;
   buttonLink?: string;
 }
@@ -22,6 +24,8 @@ const promoBannerSchema = new Schema<PromoBannerDocument>(
     description: { type: String, trim: true, default: '' },
     endsAt: { type: Date, required: true },
     isActive: { type: Boolean, default: true },
+    enableAutoDiscount: { type: Boolean, default: true },
+    enableVoucher: { type: Boolean, default: true },
     buttonText: { type: String, trim: true, default: 'Shop Now' },
     buttonLink: { type: String, trim: true, default: '/products' },
   },

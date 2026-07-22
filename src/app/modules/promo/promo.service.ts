@@ -2,7 +2,7 @@ import { PromoBanner } from './promo.model.js';
 import type { IPromoBanner } from './promo.model.js';
 
 export const getActivePromo = async () => {
-  const promo = await PromoBanner.findOne({ isActive: true }).sort({ updatedAt: -1 });
+  const promo = await PromoBanner.findOne().sort({ updatedAt: -1 });
   return promo;
 };
 
