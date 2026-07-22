@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import AppError from '../../errors/appError.js';
 import {
   buildPaginationMeta,
@@ -51,7 +52,12 @@ const getAllProductsFromDB = async (query: Record<string, unknown>) => {
 };
 
 const getSingleProductFromDB = async (id: string) => {
-  const result = await Product.findOne({ _id: id, isDeleted: false }).populate(
+  const isObjectId = mongoose.Types.ObjectId.isValid(id);
+  const filter = isObjectId
+    ? { $or: [{ _id: id }, { slug: id }], isDeleted: false }
+    : { slug: id, isDeleted: false };
+
+  const result = await Product.findOne(filter).populate(
     'category',
     'name slug',
   );

@@ -1,4 +1,4 @@
-import { Query } from 'mongoose';
+import mongoose, { Query } from 'mongoose';
 import AppError from '../../errors/appError.js';
 import config from '../../config/index.js';
 import {
@@ -695,7 +695,11 @@ const getAllOrdersFromDB = async (query: Record<string, unknown>) => {
 };
 
 const getSingleOrderFromDB = async (id: string, userId?: string) => {
-  const filter: Record<string, unknown> = { _id: id, isDeleted: false };
+  const isObjectId = mongoose.Types.ObjectId.isValid(id);
+  const filter: Record<string, unknown> = {
+    isDeleted: false,
+    ...(isObjectId ? { $or: [{ _id: id }, { transactionId: id }] } : { transactionId: id }),
+  };
   if (userId) {
     filter.user = userId;
   }
