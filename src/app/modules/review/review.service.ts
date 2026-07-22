@@ -47,7 +47,9 @@ const getReviewableProductIds = async (userId: string) => {
   return [
     ...new Set(
       deliveredPaidOrders.flatMap((order) =>
-        order.items.map((item) => item.product.toString()),
+        order.items
+          .filter((item) => Boolean(item.product))
+          .map((item) => item.product.toString()),
       ),
     ),
   ];
@@ -216,6 +218,7 @@ const getReviewableProductsFromDB = async (userId: string) => {
   }
 
   const reviewedProducts = await Review.find({
+    isDeleted: false,
     product: { $in: purchasedProductIds },
     user: userId,
   }).select('product');
