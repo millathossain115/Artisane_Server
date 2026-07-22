@@ -8,6 +8,10 @@ export interface IAddress {
   phone: string;
   streetAddress: string;
   city: string;
+  districtId?: string;
+  districtName?: string;
+  zoneId?: string;
+  zoneName?: string;
   postalCode?: string;
   country?: string;
   isDefault: boolean;
@@ -23,6 +27,10 @@ const addressSchema = new Schema<AddressDocument>(
     phone: { type: String, required: true, trim: true },
     streetAddress: { type: String, required: true, trim: true },
     city: { type: String, required: true, trim: true },
+    districtId: { type: String, trim: true, default: '' },
+    districtName: { type: String, trim: true, default: '' },
+    zoneId: { type: String, trim: true, default: '' },
+    zoneName: { type: String, trim: true, default: '' },
     postalCode: { type: String, trim: true, default: '' },
     country: { type: String, trim: true, default: 'Bangladesh' },
     isDefault: { type: Boolean, default: false },
