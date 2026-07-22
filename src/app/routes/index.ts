@@ -1,4 +1,5 @@
 import express from 'express';
+import { AddressRoutes } from '../modules/address/address.route.js';
 import { AuthRoutes } from '../modules/auth/auth.route.js';
 import { CategoryRoutes } from '../modules/category/category.route.js';
 import { DashboardRoutes } from '../modules/dashboard/dashboard.route.js';
@@ -13,6 +14,10 @@ import { WishlistRoutes } from '../modules/wishlist/wishlist.route.js';
 const router = express.Router();
 
 const moduleRoutes = [
+  {
+    path: '/addresses',
+    route: AddressRoutes,
+  },
   {
     path: '/auth',
     route: AuthRoutes,
