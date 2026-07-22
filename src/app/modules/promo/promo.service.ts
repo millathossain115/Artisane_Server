@@ -18,6 +18,7 @@ export const upsertPromo = async (payload: Partial<IPromoBanner>) => {
   const created = await PromoBanner.create({
     title: payload.title || 'Special Flash Offer',
     code: payload.code || 'ARTISANE10',
+    discountPercent: payload.discountPercent ?? 10,
     description: payload.description || 'Limited time discount on selected items!',
     endsAt: payload.endsAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     isActive: payload.isActive ?? true,

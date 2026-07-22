@@ -4,6 +4,7 @@ import type { Document } from 'mongoose';
 export interface IPromoBanner {
   title: string;
   code: string;
+  discountPercent: number;
   description?: string;
   endsAt: Date;
   isActive: boolean;
@@ -17,6 +18,7 @@ const promoBannerSchema = new Schema<PromoBannerDocument>(
   {
     title: { type: String, required: true, trim: true },
     code: { type: String, required: true, trim: true, uppercase: true },
+    discountPercent: { type: Number, required: true, min: 0, max: 100, default: 10 },
     description: { type: String, trim: true, default: '' },
     endsAt: { type: Date, required: true },
     isActive: { type: Boolean, default: true },

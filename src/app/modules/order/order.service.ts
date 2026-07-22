@@ -6,6 +6,7 @@ import {
   calculatePagination,
 } from '../../utils/pagination.js';
 import { Product } from '../product/product.model.js';
+import { PromoBanner } from '../promo/promo.model.js';
 import { User } from '../user/user.model.js';
 import { ShippingServices } from '../shipping/shipping.service.js';
 import {
@@ -390,7 +391,13 @@ const createOrderIntoDB = async (
       throw new AppError(400, `Insufficient stock for ${product.name}`);
     }
 
-    const subtotal = product.price * item.quantity;
+    const activePromo = await PromoBanner.findOne({ isActive: true }).sort({ updatedAt: -1 });
+    const isPromoActive = activePromo && activePromo.discountPercent > 0 && new Date(activePromo.endsAt).getTime() > Date.now();
+    const discountPercent = isPromoActive ? Math.min(Math.max(activePromo.discountPercent, 0), 100) : 0;
+    const discountAmount = Math.round((product.price * discountPercent) / 100);
+    const unitPrice = Math.max(0, product.price - discountAmount);
+
+    const subtotal = unitPrice * item.quantity;
 
     orderItems.push({
       product: product._id,
@@ -398,7 +405,7 @@ const createOrderIntoDB = async (
       productSlug: product.slug,
       ...(product.images?.[0] ? { image: product.images[0] } : {}),
       quantity: item.quantity,
-      unitPrice: product.price,
+      unitPrice,
       subtotal,
     });
 
