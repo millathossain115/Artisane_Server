@@ -391,9 +391,16 @@ const createOrderIntoDB = async (
       throw new AppError(400, `Insufficient stock for ${product.name}`);
     }
 
-    const activePromo = await PromoBanner.findOne({ isActive: true }).sort({ updatedAt: -1 });
-    const isPromoActive = activePromo && activePromo.discountPercent > 0 && new Date(activePromo.endsAt).getTime() > Date.now();
-    const discountPercent = isPromoActive ? Math.min(Math.max(activePromo.discountPercent, 0), 100) : 0;
+    const activePromo = await PromoBanner.findOne({ isActive: true }).sort({
+      updatedAt: -1,
+    });
+    const isPromoActive =
+      activePromo &&
+      activePromo.discountPercent > 0 &&
+      new Date(activePromo.endsAt).getTime() > Date.now();
+    const discountPercent = isPromoActive
+      ? Math.min(Math.max(activePromo.discountPercent, 0), 100)
+      : 0;
     const discountAmount = Math.round((product.price * discountPercent) / 100);
     const unitPrice = Math.max(0, product.price - discountAmount);
 
@@ -698,7 +705,9 @@ const getSingleOrderFromDB = async (id: string, userId?: string) => {
   const isObjectId = mongoose.Types.ObjectId.isValid(id);
   const filter: Record<string, unknown> = {
     isDeleted: false,
-    ...(isObjectId ? { $or: [{ _id: id }, { transactionId: id }] } : { transactionId: id }),
+    ...(isObjectId
+      ? { $or: [{ _id: id }, { transactionId: id }] }
+      : { transactionId: id }),
   };
   if (userId) {
     filter.user = userId;

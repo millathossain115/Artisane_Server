@@ -1,6 +1,6 @@
-import { Address } from './address.model.js';
-import type { IAddress } from './address.model.js';
 import { User } from '../user/user.model.js';
+import type { IAddress } from './address.model.js';
+import { Address } from './address.model.js';
 
 async function unsetOtherDefaults(userId: string) {
   await Address.updateMany({ user: userId }, { isDefault: false });
@@ -14,7 +14,10 @@ async function syncUserDefaultAddress(userId: string, address: IAddress) {
   });
 }
 
-export const createAddress = async (userId: string, payload: Partial<IAddress>) => {
+export const createAddress = async (
+  userId: string,
+  payload: Partial<IAddress>,
+) => {
   const existingCount = await Address.countDocuments({ user: userId });
   const isDefault = existingCount === 0 ? true : Boolean(payload.isDefault);
 
@@ -39,7 +42,11 @@ export const getMyAddresses = async (userId: string) => {
   return Address.find({ user: userId }).sort({ isDefault: -1, createdAt: -1 });
 };
 
-export const updateAddress = async (userId: string, addressId: string, payload: Partial<IAddress>) => {
+export const updateAddress = async (
+  userId: string,
+  addressId: string,
+  payload: Partial<IAddress>,
+) => {
   if (payload.isDefault) {
     await unsetOtherDefaults(userId);
   }
@@ -47,7 +54,7 @@ export const updateAddress = async (userId: string, addressId: string, payload: 
   const updated = await Address.findOneAndUpdate(
     { _id: addressId, user: userId },
     payload,
-    { returnDocument: 'after', runValidators: true }
+    { returnDocument: 'after', runValidators: true },
   );
 
   if (updated && updated.isDefault) {
@@ -58,10 +65,15 @@ export const updateAddress = async (userId: string, addressId: string, payload: 
 };
 
 export const deleteAddress = async (userId: string, addressId: string) => {
-  const deleted = await Address.findOneAndDelete({ _id: addressId, user: userId });
+  const deleted = await Address.findOneAndDelete({
+    _id: addressId,
+    user: userId,
+  });
 
   if (deleted?.isDefault) {
-    const nextAddress = await Address.findOne({ user: userId }).sort({ createdAt: -1 });
+    const nextAddress = await Address.findOne({ user: userId }).sort({
+      createdAt: -1,
+    });
     if (nextAddress) {
       nextAddress.isDefault = true;
       await nextAddress.save();
@@ -77,7 +89,7 @@ export const setDefaultAddress = async (userId: string, addressId: string) => {
   const updated = await Address.findOneAndUpdate(
     { _id: addressId, user: userId },
     { isDefault: true },
-    { returnDocument: 'after' }
+    { returnDocument: 'after' },
   );
 
   if (updated) {
