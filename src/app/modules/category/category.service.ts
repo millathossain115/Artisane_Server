@@ -175,7 +175,7 @@ const updateCategoryIntoDB = async (
   const result = await Category.findOneAndUpdate(
     { _id: id, isDeleted: false },
     payload,
-    { new: true, runValidators: true },
+    { returnDocument: 'after', runValidators: true },
   );
 
   return result;
@@ -185,7 +185,7 @@ const deleteSingleCategoryFromDB = async (id: string) => {
   const result = await Category.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },
-    { new: true },
+    { returnDocument: 'after' },
   );
 
   return result;

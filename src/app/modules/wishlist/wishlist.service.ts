@@ -127,7 +127,7 @@ const deleteWishlistFromDB = async (
     Wishlist.findOneAndUpdate(
       { _id: id, isDeleted: false },
       { isDeleted: true },
-      { new: true },
+      { returnDocument: 'after' },
     ),
   );
 };
@@ -140,7 +140,7 @@ const deleteWishlistByProductFromDB = async (
     Wishlist.findOneAndUpdate(
       { user: userId, product: productId, isDeleted: false },
       { isDeleted: true },
-      { new: true },
+      { returnDocument: 'after' },
     ),
   );
 

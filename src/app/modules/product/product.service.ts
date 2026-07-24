@@ -88,7 +88,7 @@ const updateProductIntoDB = async (id: string, payload: Partial<IProduct>) => {
   }
 
   await Product.findOneAndUpdate({ _id: id, isDeleted: false }, payload, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   });
 
@@ -104,7 +104,7 @@ const deleteSingleProductFromDB = async (id: string) => {
   const result = await Product.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },
-    { new: true },
+    { returnDocument: 'after' },
   ).populate('category', 'name slug');
 
   return result;

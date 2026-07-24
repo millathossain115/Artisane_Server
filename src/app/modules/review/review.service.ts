@@ -260,7 +260,7 @@ const updateReviewIntoDB = async (
   const result = await Review.findOneAndUpdate(
     { _id: id, isDeleted: false },
     payload,
-    { new: true, runValidators: true },
+    { returnDocument: 'after', runValidators: true },
   )
     .populate(reviewPopulate[0])
     .populate(reviewPopulate[1]);
@@ -286,7 +286,7 @@ const deleteSingleReviewFromDB = async (
   const result = await Review.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },
-    { new: true },
+    { returnDocument: 'after' },
   )
     .populate(reviewPopulate[0])
     .populate(reviewPopulate[1]);
@@ -322,7 +322,7 @@ const updateReviewVisibilityIntoDB = async (
   const result = await Review.findOneAndUpdate(
     { _id: id, isDeleted: false },
     update,
-    { new: true, runValidators: true },
+    { returnDocument: 'after', runValidators: true },
   )
     .populate(reviewPopulate[0])
     .populate(reviewPopulate[1])

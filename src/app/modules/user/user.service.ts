@@ -185,7 +185,7 @@ const updateUserIntoDB = async (id: string, payload: Partial<IUser>) => {
     { _id: id, isDeleted: false },
     payload,
     {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     },
   );
@@ -197,7 +197,7 @@ const deleteSingleUserFromDB = async (id: string) => {
   const result = await User.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },
-    { new: true },
+    { returnDocument: 'after' },
   );
 
   return result;

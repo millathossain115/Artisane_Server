@@ -557,7 +557,7 @@ const createShipmentIntoDB = async (
         trackingCode: shipment.trackingCode,
         trackingUrl: shipment.trackingUrl,
       },
-      { new: true, runValidators: true },
+      { returnDocument: 'after', runValidators: true },
     ),
   );
 
@@ -617,7 +617,7 @@ const syncShipmentIntoDB = async (id: string) => {
 
   const result = await populateOrder(
     Order.findOneAndUpdate({ _id: id, isDeleted: false }, update, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }),
   );
@@ -753,7 +753,7 @@ const updateOrderStatusIntoDB = async (
 
   const result = await populateOrder(
     Order.findOneAndUpdate({ _id: id, isDeleted: false }, update, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }),
   );
@@ -801,7 +801,7 @@ const cancelOrderIntoDB = async (
         orderStatus: ORDER_STATUS.cancelled,
         paymentStatus: nextPaymentStatus,
       },
-      { new: true, runValidators: true },
+      { returnDocument: 'after', runValidators: true },
     ),
   );
 
@@ -904,7 +904,7 @@ const handleSteadfastWebhook = async (payload: Record<string, unknown>) => {
 
   const result = await populateOrder(
     Order.findOneAndUpdate({ _id: order._id, isDeleted: false }, update, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     }),
   );
@@ -962,7 +962,7 @@ const markOrderAsPaid = async (payload: Record<string, unknown>) => {
         cardType: validation.card_type,
         paidAt: order.paidAt || new Date(),
       },
-      { new: true, runValidators: true },
+      { returnDocument: 'after', runValidators: true },
     ),
   );
 
@@ -1004,7 +1004,7 @@ const markOrderPaymentFailed = async (payload: Record<string, unknown>) => {
         orderStatus: ORDER_STATUS.cancelled,
         paymentStatus: PAYMENT_STATUS.failed,
       },
-      { new: true, runValidators: true },
+      { returnDocument: 'after', runValidators: true },
     ),
   );
 
@@ -1033,7 +1033,7 @@ const deleteSingleOrderFromDB = async (id: string) => {
     Order.findOneAndUpdate(
       { _id: id, isDeleted: false },
       { isDeleted: true },
-      { new: true },
+      { returnDocument: 'after' },
     ),
   );
 

@@ -47,7 +47,7 @@ export const updateAddress = async (userId: string, addressId: string, payload: 
   const updated = await Address.findOneAndUpdate(
     { _id: addressId, user: userId },
     payload,
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 
   if (updated && updated.isDefault) {
@@ -77,7 +77,7 @@ export const setDefaultAddress = async (userId: string, addressId: string) => {
   const updated = await Address.findOneAndUpdate(
     { _id: addressId, user: userId },
     { isDefault: true },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (updated) {

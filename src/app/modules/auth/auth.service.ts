@@ -168,7 +168,7 @@ const loginWithGoogle = async (
         { _id: user._id },
         update,
         {
-          new: true,
+          returnDocument: 'after',
           runValidators: true,
         },
       );
@@ -222,7 +222,7 @@ const updateMyProfileIntoDB = async (
     { _id: userId, isDeleted: false },
     payload,
     {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     },
   );
