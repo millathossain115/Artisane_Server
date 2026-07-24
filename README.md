@@ -56,13 +56,19 @@ src/
     interface/
     middlewares/
     modules/
+      address/
       auth/
-      user/
       category/
       dashboard/
-      product/
+      delivery/
+      location/
       order/
+      product/
+      promo/
       review/
+      shipping/
+      user/
+      wishlist/
     routes/
     utils/
   app.ts
@@ -228,6 +234,32 @@ These public endpoints proxy Steadfast location data while keeping courier crede
 - `POST /delivery/webhook/steadfast`
 
 This public endpoint receives Steadfast status updates and updates matching orders by `consignment_id` or `invoice`. If `STEADFAST_WEBHOOK_SECRET` is set, send `x-steadfast-signature` as an HMAC SHA-256 hex digest of the JSON payload.
+
+### Addresses
+
+- `POST /addresses`
+- `GET /addresses/my-addresses`
+- `PATCH /addresses/:id`
+- `DELETE /addresses/:id`
+- `PATCH /addresses/:id/set-default`
+
+Require authenticated `admin` or `user`.
+
+### Wishlist
+
+- `POST /wishlists/create-wishlist`
+- `GET /wishlists/my-wishlist`
+- `GET /wishlists/dashboard`
+- `DELETE /wishlists/clear`
+- `DELETE /wishlists/product/:productId`
+- `DELETE /wishlists/:id`
+
+Require authenticated `admin` or `user`.
+
+### Promo
+
+- `GET /promos/active` (public)
+- `PATCH /promos` (admin only)
 
 ### Reviews
 
