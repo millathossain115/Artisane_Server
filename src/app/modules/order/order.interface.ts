@@ -22,6 +22,7 @@ export interface IOrderItem {
 }
 
 export interface IOrder {
+  _id?: Types.ObjectId;
   user: Types.ObjectId;
   items: IOrderItem[];
   totalPrice: number;
@@ -32,6 +33,7 @@ export interface IOrder {
   courierStatus?: string;
   courierStatusRaw?: unknown;
   paymentMethod?: TPaymentMethod;
+  publicRef?: string;
   transactionId?: string;
   sslcommerzSessionKey?: string;
   sslcommerzValidationId?: string;

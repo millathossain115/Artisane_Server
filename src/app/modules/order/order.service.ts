@@ -1,14 +1,15 @@
 import mongoose, { Query } from 'mongoose';
-import AppError from '../../errors/appError.js';
 import config from '../../config/index.js';
+import AppError from '../../errors/appError.js';
 import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import { createPaymentLog } from '../paymentLog/paymentLog.service.js';
 import { Product } from '../product/product.model.js';
 import { PromoBanner } from '../promo/promo.model.js';
-import { User } from '../user/user.model.js';
 import { ShippingServices } from '../shipping/shipping.service.js';
+import { User } from '../user/user.model.js';
 import {
   CANCELLABLE_ORDER_STATUSES,
   ORDER_STATUS,
@@ -454,6 +455,21 @@ const createOrderIntoDB = async (
   const createdOrder = await Order.create(orderPayload);
   const result = await populateOrder(Order.findById(createdOrder._id));
 
+  await createPaymentLog({
+    orderId: createdOrder._id,
+    userId: user._id,
+    transactionId: createdOrder.transactionId!,
+    amount: createdOrder.totalPrice,
+    paymentMethod: createdOrder.paymentMethod!,
+    status:
+      createdOrder.paymentStatus === PAYMENT_STATUS.paid ? 'Paid' : 'Pending',
+    gatewayResponse: {
+      event: 'ORDER_CREATED',
+      orderStatus: createdOrder.orderStatus,
+      paymentMethod: createdOrder.paymentMethod,
+    },
+  });
+
   if (
     result &&
     ONLINE_PAYMENT_METHODS.has(payload.paymentMethod) &&
@@ -706,8 +722,8 @@ const getSingleOrderFromDB = async (id: string, userId?: string) => {
   const filter: Record<string, unknown> = {
     isDeleted: false,
     ...(isObjectId
-      ? { $or: [{ _id: id }, { transactionId: id }] }
-      : { transactionId: id }),
+      ? { $or: [{ _id: id }, { publicRef: id }, { transactionId: id }] }
+      : { $or: [{ publicRef: id }, { transactionId: id }] }),
   };
   if (userId) {
     filter.user = userId;
@@ -767,6 +783,26 @@ const updateOrderStatusIntoDB = async (
     }),
   );
 
+  if (
+    result &&
+    payload.paymentStatus === PAYMENT_STATUS.paid &&
+    order.paymentStatus !== PAYMENT_STATUS.paid
+  ) {
+    await createPaymentLog({
+      orderId: order._id,
+      userId: result.user!,
+      transactionId: result.transactionId!,
+      amount: result.totalPrice,
+      paymentMethod: result.paymentMethod!,
+      status: 'Paid',
+      gatewayResponse: {
+        event: 'ORDER_STATUS_UPDATED',
+        orderStatus: result.orderStatus,
+        paymentStatus: result.paymentStatus,
+      },
+    });
+  }
+
   return result;
 };
 
@@ -813,6 +849,24 @@ const cancelOrderIntoDB = async (
       { returnDocument: 'after', runValidators: true },
     ),
   );
+
+  if (result) {
+    await createPaymentLog({
+      orderId: order._id,
+      userId: result.user!,
+      transactionId: result.transactionId!,
+      amount: result.totalPrice,
+      paymentMethod: result.paymentMethod!,
+      status:
+        nextPaymentStatus === PAYMENT_STATUS.refunded ? 'Refunded' : 'Failed',
+      errorMessage: 'Order cancelled by user/admin',
+      gatewayResponse: {
+        event: 'ORDER_CANCELLED',
+        previousPaymentStatus: order.paymentStatus,
+        newPaymentStatus: nextPaymentStatus,
+      },
+    });
+  }
 
   return result;
 };
@@ -975,6 +1029,16 @@ const markOrderAsPaid = async (payload: Record<string, unknown>) => {
     ),
   );
 
+  await createPaymentLog({
+    orderId: order._id,
+    userId: order.user,
+    transactionId: order.transactionId!,
+    amount: order.totalPrice,
+    paymentMethod: order.paymentMethod!,
+    status: 'Paid',
+    gatewayResponse: validation,
+  });
+
   return {
     order: result,
     validation,
@@ -996,6 +1060,19 @@ const markOrderPaymentFailed = async (payload: Record<string, unknown>) => {
   if (!order) {
     throw new AppError(404, 'Order not found');
   }
+
+  await createPaymentLog({
+    orderId: order._id,
+    userId: order.user,
+    transactionId: order.transactionId!,
+    amount: order.totalPrice,
+    paymentMethod: order.paymentMethod!,
+    status: 'Failed',
+    errorMessage:
+      getPaymentPayloadValue(payload, 'error') ||
+      'Payment failed or cancelled via gateway',
+    gatewayResponse: payload,
+  });
 
   if (
     order.orderStatus &&

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import {
   COURIER_PROVIDER,
@@ -101,6 +102,13 @@ const orderSchema = new Schema<IOrder>(
       enum: Object.keys(PAYMENT_METHOD),
       default: PAYMENT_METHOD.cod,
       required: [true, 'Payment method is required'],
+    },
+    publicRef: {
+      type: String,
+      default: () => randomUUID(),
+      index: true,
+      sparse: true,
+      unique: true,
     },
     transactionId: {
       type: String,
