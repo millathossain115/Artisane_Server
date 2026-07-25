@@ -1,11 +1,16 @@
-import { randomUUID } from 'node:crypto'
-import { Schema, model } from 'mongoose'
+import { Schema, model } from 'mongoose';
+import { randomUUID } from 'node:crypto';
 import type { IPaymentLog } from './paymentLog.interface.js';
 
-export type TPaymentStatus = 'Pending' | 'Paid' | 'Failed' | 'Cancelled' | 'Refunded'
+export type TPaymentStatus =
+  | 'Pending'
+  | 'Paid'
+  | 'Failed'
+  | 'Cancelled'
+  | 'Refunded';
 
 export interface IPaymentLogDocument extends IPaymentLog {
-  _id: string
+  _id: string;
 }
 
 const paymentLogSchema = new Schema<IPaymentLog>(
@@ -36,9 +41,9 @@ const paymentLogSchema = new Schema<IPaymentLog>(
   {
     timestamps: true,
   },
-)
+);
 
-paymentLogSchema.index({ createdAt: -1 })
-paymentLogSchema.index({ orderId: 1 })
+paymentLogSchema.index({ createdAt: -1 });
+paymentLogSchema.index({ orderId: 1 });
 
-export const PaymentLog = model<IPaymentLog>('PaymentLog', paymentLogSchema)
+export const PaymentLog = model<IPaymentLog>('PaymentLog', paymentLogSchema);
