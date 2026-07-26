@@ -1,5 +1,5 @@
-import { Schema, model } from 'mongoose';
 import type { Document, Types } from 'mongoose';
+import { Schema, model } from 'mongoose';
 
 export interface IAddress {
   user: Types.ObjectId;
@@ -21,7 +21,12 @@ export type AddressDocument = Document & IAddress;
 
 const addressSchema = new Schema<AddressDocument>(
   {
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
     label: { type: String, required: true, trim: true, default: 'Home' },
     recipientName: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
@@ -35,7 +40,7 @@ const addressSchema = new Schema<AddressDocument>(
     country: { type: String, trim: true, default: 'Bangladesh' },
     isDefault: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export const Address = model<AddressDocument>('Address', addressSchema);

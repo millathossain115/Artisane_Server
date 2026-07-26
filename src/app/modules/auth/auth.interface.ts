@@ -2,6 +2,8 @@ import type { TUserRole, TUserStatus } from '../user/user.interface.js';
 
 export type { TUserRole, TUserStatus };
 
+export type TProfileGender = 'female' | 'male' | 'other' | 'prefer_not_to_say';
+
 export interface IRegisterUser {
   name: string;
   email: string;
@@ -13,6 +15,9 @@ export interface IRegisterUser {
 export interface IUpdateMyProfile {
   name?: string;
   phone?: string;
+  alternativePhone?: string;
+  dateOfBirth?: Date;
+  gender?: TProfileGender;
   address?: string;
   city?: string;
   postalCode?: string;
@@ -47,6 +52,9 @@ export interface IAuthResponse {
     name: string;
     email: string;
     phone?: string;
+    alternativePhone?: string;
+    dateOfBirth?: string;
+    gender?: TProfileGender;
     address?: string;
     city?: string;
     postalCode?: string;

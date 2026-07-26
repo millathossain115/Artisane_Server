@@ -25,6 +25,17 @@ const userSchema = new Schema<IUser>(
       type: String,
       trim: true,
     },
+    alternativePhone: {
+      type: String,
+      trim: true,
+    },
+    dateOfBirth: {
+      type: Date,
+    },
+    gender: {
+      type: String,
+      enum: ['female', 'male', 'other', 'prefer_not_to_say'],
+    },
     address: {
       type: String,
       trim: true,

@@ -53,6 +53,7 @@ const updateMyProfile = catchAsync(async (req, res) => {
   const result = await AuthServices.updateMyProfileIntoDB(
     req.user.userId,
     req.body,
+    req.file,
   );
 
   sendResponse(res, {

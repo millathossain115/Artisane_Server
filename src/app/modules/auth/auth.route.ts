@@ -1,5 +1,6 @@
 import express from 'express';
 import auth from '../../middlewares/auth.js';
+import uploadProfileAvatar from '../../middlewares/uploadProfileAvatar.js';
 import validateRequest from '../../middlewares/validateRequest.js';
 import { AuthControllers } from './auth.controller.js';
 import { AuthValidations } from './auth.validation.js';
@@ -30,6 +31,7 @@ router.get('/me', auth(USER_ROLE.admin, USER_ROLE.user), AuthControllers.getMe);
 router.patch(
   '/me',
   auth(USER_ROLE.admin, USER_ROLE.user),
+  uploadProfileAvatar.single('avatar'),
   validateRequest(AuthValidations.updateMyProfileValidationSchema),
   AuthControllers.updateMyProfile,
 );

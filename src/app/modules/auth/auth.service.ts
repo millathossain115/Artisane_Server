@@ -1,8 +1,10 @@
 import bcrypt from 'bcrypt';
+import type { Express } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt, { type Secret, type SignOptions } from 'jsonwebtoken';
 import AppError from '../../errors/appError.js';
 import config from '../../config/index.js';
+import { uploadImageToCloudinary } from '../../utils/cloudinary.js';
 import { USER_STATUS } from '../user/user.constant.js';
 import type { TUserStatus } from '../user/user.interface.js';
 import { User } from '../user/user.model.js';
@@ -32,6 +34,9 @@ const buildAuthUserResponse = (user: {
   name: string;
   email: string;
   phone?: string;
+  alternativePhone?: string;
+  dateOfBirth?: Date | string;
+  gender?: IUpdateMyProfile['gender'];
   address?: string;
   city?: string;
   postalCode?: string;
@@ -40,11 +45,23 @@ const buildAuthUserResponse = (user: {
   status?: TUserStatus;
   isDeleted?: boolean;
 }) => {
+  const dateOfBirth =
+    user.dateOfBirth instanceof Date
+      ? user.dateOfBirth.toISOString().slice(0, 10)
+      : user.dateOfBirth
+        ? new Date(user.dateOfBirth).toISOString().slice(0, 10)
+        : undefined;
+
   return {
     _id: user._id.toString(),
     name: user.name,
     email: user.email,
     ...(user.phone ? { phone: user.phone } : {}),
+    ...(user.alternativePhone
+      ? { alternativePhone: user.alternativePhone }
+      : {}),
+    ...(dateOfBirth ? { dateOfBirth } : {}),
+    ...(user.gender ? { gender: user.gender } : {}),
     ...(user.address ? { address: user.address } : {}),
     ...(user.city ? { city: user.city } : {}),
     ...(user.postalCode ? { postalCode: user.postalCode } : {}),
@@ -201,12 +218,13 @@ const getMe = async (userId: string) => {
     throw new AppError(401, 'You are not authorized!');
   }
 
-  return user;
+  return buildAuthUserResponse(user);
 };
 
 const updateMyProfileIntoDB = async (
   userId: string,
   payload: IUpdateMyProfile,
+  avatarFile?: Express.Multer.File,
 ) => {
   const user = await User.findById(userId);
 
@@ -218,9 +236,18 @@ const updateMyProfileIntoDB = async (
     throw new AppError(401, 'You are not authorized!');
   }
 
+  const updatePayload = { ...payload };
+
+  if (avatarFile) {
+    updatePayload.avatar = await uploadImageToCloudinary(
+      avatarFile,
+      'artisane/profiles',
+    );
+  }
+
   const result = await User.findOneAndUpdate(
     { _id: userId, isDeleted: false },
-    payload,
+    updatePayload,
     {
       returnDocument: 'after',
       runValidators: true,
