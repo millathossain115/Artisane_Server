@@ -11,6 +11,7 @@ import { ReviewRoutes } from '../modules/review/review.route.js';
 import { UserRoutes } from '../modules/user/user.route.js';
 import { WishlistRoutes } from '../modules/wishlist/wishlist.route.js';
 import { PromoRoutes } from '../modules/promo/promo.route.js';
+import { HomeContentRoutes } from '../modules/homeContent/homeContent.route.js';
 import { paymentLogRoutes } from '../modules/paymentLog/paymentLog.route.js';
 
 const router = express.Router();
@@ -63,6 +64,10 @@ const moduleRoutes = [
   {
     path: '/promos',
     route: PromoRoutes,
+  },
+  {
+    path: '/home-content',
+    route: HomeContentRoutes,
   },
   {
     path: '/payment-logs',

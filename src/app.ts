@@ -21,7 +21,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.use(
-  /^\/(?:api\/v1\/)?(?:addresses|auth|users|categories|dashboard|delivery|products|orders|locations|reviews|wishlists|promos)(?:\/|$)/,
+  /^\/(?:api\/v1\/)?(?:addresses|auth|users|categories|dashboard|delivery|products|orders|locations|reviews|wishlists|promos|home-content)(?:\/|$)/,
   ensureDatabaseConnected,
 );
 app.use('/api/v1', router);
