@@ -14,6 +14,7 @@ import { PromoRoutes } from '../modules/promo/promo.route.js';
 import { HomeContentRoutes } from '../modules/homeContent/homeContent.route.js';
 import { paymentLogRoutes } from '../modules/paymentLog/paymentLog.route.js';
 import { ActivityLogRoutes } from '../modules/activityLog/activityLog.route.js';
+import { AnalyticsRoutes } from '../modules/analytics/analytics.route.js';
 
 const router = express.Router();
 
@@ -77,6 +78,10 @@ const moduleRoutes = [
   {
     path: '/activity-logs',
     route: ActivityLogRoutes,
+  },
+  {
+    path: '/analytics',
+    route: AnalyticsRoutes,
   },
 ];
 
