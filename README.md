@@ -1,20 +1,54 @@
 # Artisane Server
 
-Single-vendor e-commerce backend built with `Express`, `TypeScript`, `MongoDB`, `Mongoose`, `Zod`, and JWT authentication.
+Artisane Server is a TypeScript, Express, and MongoDB backend for a single-vendor e-commerce application. It provides authentication, catalog management, ordering, payments, courier integration, reviews, wishlists, dashboard analytics, home-page content, and operational activity logs.
+
+## Table Of Contents
+
+- [Overview](#overview)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Requirements](#requirements)
+- [Environment Variables](#environment-variables)
+- [Installation](#installation)
+- [Available Scripts](#available-scripts)
+- [Running Locally](#running-locally)
+- [API Base URLs](#api-base-urls)
+- [Authentication](#authentication)
+- [Route Catalog](#route-catalog)
+- [Uploads And Images](#uploads-and-images)
+- [Payments](#payments)
+- [Courier And Delivery](#courier-and-delivery)
+- [Seeding](#seeding)
+- [Response Format](#response-format)
+- [Pagination And Filtering](#pagination-and-filtering)
+- [Validation And Error Handling](#validation-and-error-handling)
+- [Build And Deployment Notes](#build-and-deployment-notes)
+- [Known Maintenance Notes](#known-maintenance-notes)
 
 ## Overview
 
-This API currently supports:
+The server exposes a REST API for the Artisane storefront and admin panel.
 
-- authentication with access and refresh token generation
-- admin user management
-- category CRUD
-- product CRUD with search, filtering, sorting, and pagination
-- order creation and lifecycle management
-- review CRUD with per-user ownership rules
-- admin dashboard statistics
+Current capabilities include:
 
-The project follows a modular feature structure with shared middleware, validation, pagination utilities, and centralized error handling.
+- Email/password registration and login.
+- Google login using a Google ID token.
+- JWT-protected routes for `user`, `admin`, and `super_admin` roles.
+- Profile management with avatar upload support.
+- Admin and super-admin user management.
+- Category CRUD with image upload and soft delete.
+- Product CRUD with multiple image upload, search, filters, sorting, pagination, and category population.
+- Wishlist management per authenticated user.
+- Address management per authenticated user.
+- Order creation, order status transitions, cancellation, soft delete, and shipment sync.
+- SSLCommerz payment initiation and callback handling.
+- Payment log listing, detail lookup, and statistics.
+- Review creation, ownership checks, moderation visibility, and reviewable-product lookup.
+- Home hero content management.
+- Promo banner management.
+- Admin dashboard and analytics endpoints.
+- Activity log listing, detail view, and stats.
+- Steadfast courier location proxy, shipment creation, webhook handling, and background status polling.
 
 ## Tech Stack
 
@@ -26,94 +60,137 @@ The project follows a modular feature structure with shared middleware, validati
 - `Zod`
 - `jsonwebtoken`
 - `bcrypt`
+- `multer`
+- `cloudinary`
+- `google-auth-library`
 - `cors`
-
-## Current Features
-
-- register, login, and protected `me` endpoint
-- JWT-based route protection for `admin` and `user`
-- hashed password auth with blocked-user and soft-deleted-user checks
-- category CRUD with soft delete
-- product CRUD with category population
-- product list search by name
-- product filtering by category and price range
-- product sorting by `newest`, `price`, or computed `rating`
-- paginated product, order, and review listings
-- order creation with product snapshot fields and stock reduction
-- order cancellation with stock restore
-- payment status handling including `unpaid`, `paid`, `failed`, and `refunded`
-- review creation with one-review-per-user-per-product enforcement
-- admin dashboard stats for totals, revenue, low stock, and recent activity
-- centralized error formatting for validation, duplicate, cast, and Zod errors
+- `dotenv`
+- `ESLint`
+- `Prettier`
 
 ## Project Structure
 
 ```txt
 src/
+  app.ts                         Express app setup and global middleware
+  server.ts                      Database connection and HTTP server bootstrap
   app/
-    config/
-    errors/
-    interface/
-    middlewares/
+    config/                      Environment configuration
+    errors/                      AppError and error normalizers
+    interface/                   Global TypeScript declarations
+    middlewares/                 Auth, validation, upload, DB, and error middleware
     modules/
-      address/
-      auth/
-      category/
-      dashboard/
-      delivery/
-      location/
-      order/
-      product/
-      promo/
-      review/
-      shipping/
-      user/
-      wishlist/
-    routes/
-    utils/
-  app.ts
-  server.ts
+      activityLog/               Admin activity audit trail
+      address/                   User address book
+      analytics/                 Admin analytics API
+      auth/                      Register, login, Google auth, profile
+      category/                  Category catalog
+      dashboard/                 Admin/user dashboard stats
+      delivery/                  Courier webhook handling
+      homeContent/               Home hero content
+      location/                  Courier location proxy
+      order/                     Orders, payments, shipments
+      paymentLog/                Payment audit and stats
+      product/                   Product catalog
+      promo/                     Promo banner content
+      review/                    Product reviews and moderation
+      shipping/                  Steadfast courier service and poller
+      user/                      User admin APIs and role constants
+      wishlist/                  Wishlist APIs
+    routes/                      API route composition
+    seed/                        Seed scripts and seed data
+    utils/                       Shared helpers
 ```
 
-## API Base URL
+Generated and local-runtime folders:
 
-```txt
-http://localhost:5000/api/v1
-```
+- `dist/` is generated by `npm run build`.
+- `node_modules/` is installed by `npm install`.
+- `uploads/` can be created at runtime or by seed scripts for local files.
 
-Health route:
+These folders are ignored by git.
 
-```txt
-GET /
-```
+## Requirements
 
-Returns:
-
-```txt
-Artisane Server is running
-```
+- Node.js compatible with the installed dependencies.
+- npm.
+- A MongoDB database connection string.
+- Cloudinary credentials if image upload endpoints are used.
+- SSLCommerz credentials if payment flows are used.
+- Steadfast credentials if courier features are used.
+- Google OAuth client ID if Google login is used.
 
 ## Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root. Use `.env.example` as the starting point.
 
 ```env
 PORT=5000
-DATABASE_URL=your_mongodb_connection_string
+DATABASE_URL=
 NODE_ENV=development
-BCRYPT_SALT_ROUNDS=10
-JWT_ACCESS_SECRET=your_access_secret
-JWT_REFRESH_SECRET=your_refresh_secret
+BCRYPT_SALT_ROUNDS=12
+JWT_ACCESS_SECRET=
+JWT_REFRESH_SECRET=
 JWT_ACCESS_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
+FRONTEND_URL=http://localhost:5173
+
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+
+SSLCOMMERZ_STORE_ID=
+SSLCOMMERZ_STORE_PASSWORD=
+SSLCOMMERZ_IS_LIVE=false
+
 COURIER_SYNC_INTERVAL_MS=900000
-STEADFAST_API_KEY=your_steadfast_api_key
-STEADFAST_SECRET_KEY=your_steadfast_secret_key
-STEADFAST_BASE_URL=your_steadfast_base_url
-STEADFAST_DISTRICTS_PATH=/districts
-STEADFAST_ZONES_PATH=/districts/:districtId/zones
-STEADFAST_WEBHOOK_SECRET=optional_webhook_hmac_secret
+
+STEADFAST_API_KEY=
+STEADFAST_SECRET_KEY=
+STEADFAST_BASE_URL=https://portal.packzy.com/api/v1
+STEADFAST_DISTRICTS_PATH=/police_stations
+STEADFAST_ZONES_PATH=/police_stations
+STEADFAST_WEBHOOK_SECRET=
+
+GOOGLE_CLIENT_ID=
+CLIENT_URL=http://localhost:5173
+GOOGLE_CALLBACK_URL=http://localhost:5000/api/v1/auth/google/callback
 ```
+
+Environment reference:
+
+| Variable                     | Purpose                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| `PORT`                       | HTTP server port. Defaults to `5000`.                                                 |
+| `DATABASE_URL`               | MongoDB connection string. Required.                                                  |
+| `NODE_ENV`                   | Runtime environment, for example `development` or `production`.                       |
+| `BCRYPT_SALT_ROUNDS`         | Password hashing salt rounds.                                                         |
+| `JWT_ACCESS_SECRET`          | Secret for signing access tokens. Required for protected APIs.                        |
+| `JWT_REFRESH_SECRET`         | Secret for signing refresh tokens.                                                    |
+| `JWT_ACCESS_EXPIRES_IN`      | Access token lifetime, for example `7d`.                                              |
+| `JWT_REFRESH_EXPIRES_IN`     | Refresh token lifetime, for example `30d`.                                            |
+| `FRONTEND_URL`               | Frontend URL used by integrations and redirects. Defaults to `http://localhost:5173`. |
+| `SUPER_ADMIN_EMAIL`          | Email used by the super-admin seed script.                                            |
+| `SUPER_ADMIN_NAME`           | Optional super-admin display name.                                                    |
+| `SUPER_ADMIN_PASSWORD`       | Password used by the super-admin seed script.                                         |
+| `SUPER_ADMIN_PHONE`          | Optional super-admin phone number.                                                    |
+| `SUPER_ADMIN_RESET_PASSWORD` | Set to `true` to allow the seed script to reset the super-admin password.             |
+| `GOOGLE_CLIENT_ID`           | Google OAuth client ID used to verify Google ID tokens.                               |
+| `CLOUDINARY_CLOUD_NAME`      | Cloudinary cloud name for image uploads.                                              |
+| `CLOUDINARY_API_KEY`         | Cloudinary API key.                                                                   |
+| `CLOUDINARY_API_SECRET`      | Cloudinary API secret.                                                                |
+| `SSLCOMMERZ_STORE_ID`        | SSLCommerz store ID.                                                                  |
+| `SSLCOMMERZ_STORE_PASSWORD`  | SSLCommerz store password.                                                            |
+| `SSLCOMMERZ_IS_LIVE`         | Set to `true` for live SSLCommerz mode; otherwise sandbox behavior is expected.       |
+| `COURIER_SYNC_INTERVAL_MS`   | Background courier status poll interval. Defaults to `900000` ms.                     |
+| `STEADFAST_API_KEY`          | Steadfast API key.                                                                    |
+| `STEADFAST_SECRET_KEY`       | Steadfast secret key.                                                                 |
+| `STEADFAST_BASE_URL`         | Steadfast API base URL.                                                               |
+| `STEADFAST_DISTRICTS_PATH`   | Path used for district/police-station lookup.                                         |
+| `STEADFAST_ZONES_PATH`       | Path used for zone lookup.                                                            |
+| `STEADFAST_WEBHOOK_SECRET`   | Optional HMAC secret for validating Steadfast webhooks.                               |
+| `CLIENT_URL`                 | Client URL used by some auth/payment flows.                                           |
+| `GOOGLE_CALLBACK_URL`        | Google callback URL value for external OAuth configuration.                           |
 
 ## Installation
 
@@ -121,231 +198,427 @@ STEADFAST_WEBHOOK_SECRET=optional_webhook_hmac_secret
 npm install
 ```
 
-## Run The Project
+## Available Scripts
 
-Development:
+| Script                        | Description                                                        |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `npm run dev`                 | Start the development server with `tsx watch src/server.ts`.       |
+| `npm run build`               | Compile TypeScript into `dist/`.                                   |
+| `npm run start`               | Start the compiled server from `dist/server.js`.                   |
+| `npm run seed:artist-brushes` | Seed artist brush products from `src/app/seed/seed-products.json`. |
+| `npm run seed:super-admin`    | Create or update the configured super-admin user.                  |
+| `npm run lint`                | Run ESLint on `src/**/*.ts`.                                       |
+| `npm run lint:fix`            | Run ESLint and apply automatic fixes where possible.               |
+| `npm run prettier`            | Format source files with Prettier.                                 |
+| `npm run prettier:check`      | Check source formatting.                                           |
+| `npm run test`                | Placeholder script. It currently exits with an error.              |
+
+## Running Locally
+
+1. Install dependencies.
+
+```bash
+npm install
+```
+
+2. Create `.env` from `.env.example` and fill required secrets.
+
+3. Start the development server.
 
 ```bash
 npm run dev
 ```
 
-Build:
+4. Open the health route.
+
+```txt
+GET http://localhost:5000/
+```
+
+Expected response:
+
+```txt
+Artisane Server is running
+```
+
+For production-style local execution:
 
 ```bash
 npm run build
-```
-
-Start production build:
-
-```bash
 npm run start
 ```
 
-## Available Scripts
+## API Base URLs
 
-- `npm run dev` - start development server with `tsx watch`
-- `npm run build` - compile TypeScript into `dist/`
-- `npm run start` - run compiled server from `dist/server.js`
-- `npm run lint` - run ESLint on `src/**/*.ts`
-- `npm run lint:fix` - run ESLint with automatic fixes
-- `npm run prettier` - format `src` files
-- `npm run prettier:check` - check formatting
-- `npm run test` - placeholder script that currently exits with an error
+The router is mounted in two ways:
 
-## Main Routes
+```txt
+http://localhost:5000/api/v1
+http://localhost:5000
+```
 
-### Auth
+The versioned path is recommended:
 
-- `POST /auth/register`
-- `POST /auth/login`
-- `GET /auth/me`
+```txt
+http://localhost:5000/api/v1/auth/login
+```
 
-`register` and `login` return both `accessToken` and `refreshToken`.
+## Authentication
 
-### Users
-
-Admin only:
-
-- `POST /users/create-user`
-- `GET /users`
-- `GET /users/:id`
-- `DELETE /users/:id`
-
-### Categories
-
-Public read, admin write:
-
-- `POST /categories/create-category`
-- `GET /categories`
-- `GET /categories/:id`
-- `PATCH /categories/:id`
-- `DELETE /categories/:id`
-
-### Products
-
-Public read, admin write:
-
-- `POST /products/create-product`
-- `GET /products`
-- `GET /products/:id`
-- `PATCH /products/:id`
-- `DELETE /products/:id`
-
-Supported product query params on `GET /products`:
-
-- `page`
-- `limit`
-- `searchTerm`
-- `category`
-- `minPrice`
-- `maxPrice`
-- `sortBy` with `newest`, `price`, or `rating`
-- `sortOrder` with `asc` or `desc`
-
-### Orders
-
-- `POST /orders/create-order`
-- `GET /orders/my-orders`
-- `GET /orders`
-- `GET /orders/:id`
-- `POST /orders/:id/shipment`
-- `POST /orders/:id/shipment/sync`
-- `PATCH /orders/:id/status`
-- `PATCH /orders/:id/cancel`
-- `DELETE /orders/:id`
-
-Access rules:
-
-- `create-order` and `my-orders` require authenticated `admin` or `user`
-- `GET /orders`, `GET /orders/:id`, `POST /orders/:id/shipment`, `POST /orders/:id/shipment/sync`, `PATCH /orders/:id/status`, and `DELETE /orders/:id` are admin only
-- users can cancel only their own orders
-- admins can cancel any order
-- `POST /orders/:id/shipment` dispatches the order to Steadfast and stores `consignment_id`, `tracking_code`, and the raw courier response
-
-### Locations
-
-- `GET /locations/districts`
-- `GET /locations/districts/:districtId/zones`
-
-These public endpoints proxy Steadfast location data while keeping courier credentials on the server.
-
-### Delivery
-
-- `POST /delivery/webhook/steadfast`
-
-This public endpoint receives Steadfast status updates and updates matching orders by `consignment_id` or `invoice`. If `STEADFAST_WEBHOOK_SECRET` is set, send `x-steadfast-signature` as an HMAC SHA-256 hex digest of the JSON payload.
-
-### Addresses
-
-- `POST /addresses`
-- `GET /addresses/my-addresses`
-- `PATCH /addresses/:id`
-- `DELETE /addresses/:id`
-- `PATCH /addresses/:id/set-default`
-
-Require authenticated `admin` or `user`.
-
-### Wishlist
-
-- `POST /wishlists/create-wishlist`
-- `GET /wishlists/my-wishlist`
-- `GET /wishlists/dashboard`
-- `DELETE /wishlists/clear`
-- `DELETE /wishlists/product/:productId`
-- `DELETE /wishlists/:id`
-
-Require authenticated `admin` or `user`.
-
-### Promo
-
-- `GET /promos/active` (public)
-- `PATCH /promos` (admin only)
-
-### Reviews
-
-- `POST /reviews/create-review`
-- `GET /reviews`
-- `GET /reviews/product/:productId`
-- `GET /reviews/:id`
-- `PATCH /reviews/:id`
-- `DELETE /reviews/:id`
-
-Access rules:
-
-- review creation requires authenticated `admin` or `user`
-- review update and delete are allowed for the review owner or an admin
-
-### Dashboard
-
-Admin only:
-
-- `GET /dashboard/admin-stats`
-
-Supported dashboard query params:
-
-- `dateFrom` in a date-like format such as `2026-05-01`
-- `dateTo` in a date-like format such as `2026-05-31`
-- `orderStatus` with `pending`, `confirmed`, `processing`, `shipped`, `delivered`, or `cancelled`
-- `paymentStatus` with `unpaid`, `paid`, `failed`, or `refunded`
-
-Current dashboard response includes:
-
-- total users
-- total products
-- total orders
-- delivered-order revenue total
-- monthly revenue for the last 12 months
-- order status summary
-- low-stock products
-- recent users
-- recent orders
-- recent reviews
-- applied filters summary
-
-## Order Rules
-
-Allowed status flow:
-
-- `pending -> confirmed`
-- `confirmed -> processing`
-- `processing -> shipped`
-- `shipped -> delivered`
-
-Cancellation behavior:
-
-- orders can be cancelled only when status is `pending`, `confirmed`, or `processing`
-- `PATCH /orders/:id/status` cannot set `cancelled` directly
-- cancelled orders restore stock
-- if payment status is `paid`, cancelling changes it to `refunded`
-
-## Authentication Notes
-
-Protected routes require:
+Protected routes require an access token:
 
 ```txt
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
-Role model:
+Roles:
 
-- `admin`
 - `user`
+- `admin`
+- `super_admin`
 
-## Response Shape
+Role behavior:
 
-Most endpoints use a shared JSON response format:
+- `user` can manage their own profile, addresses, wishlist, reviews, and orders.
+- `admin` can manage catalog, orders, reviews, promo, home content, dashboard, analytics, activity logs, and payment logs.
+- `super_admin` can create, update, and delete users and can create courier shipments for orders.
+
+## Route Catalog
+
+All paths below are shown relative to `/api/v1`.
+
+### Auth
+
+| Method  | Path             | Access          | Notes                                                     |
+| ------- | ---------------- | --------------- | --------------------------------------------------------- |
+| `POST`  | `/auth/register` | Public          | Register a user with email/password.                      |
+| `POST`  | `/auth/login`    | Public          | Login and receive access/refresh tokens.                  |
+| `POST`  | `/auth/google`   | Public          | Login/register with a Google ID token.                    |
+| `GET`   | `/auth/me`       | `user`, `admin` | Get the authenticated profile.                            |
+| `PATCH` | `/auth/me`       | `user`, `admin` | Update own profile. Accepts optional `avatar` image file. |
+
+### Users
+
+| Method   | Path                 | Access        | Notes                        |
+| -------- | -------------------- | ------------- | ---------------------------- |
+| `POST`   | `/users/create-user` | `super_admin` | Create a user/admin account. |
+| `GET`    | `/users`             | `admin`       | List users.                  |
+| `GET`    | `/users/stats`       | `admin`       | User statistics.             |
+| `GET`    | `/users/:id`         | `admin`       | Get a single user.           |
+| `PATCH`  | `/users/:id`         | `super_admin` | Update a user.               |
+| `DELETE` | `/users/:id`         | `super_admin` | Soft delete a user.          |
+
+### Categories
+
+| Method   | Path                          | Access  | Notes                                  |
+| -------- | ----------------------------- | ------- | -------------------------------------- |
+| `POST`   | `/categories/create-category` | `admin` | Create category. Accepts `image` file. |
+| `GET`    | `/categories`                 | Public  | List categories.                       |
+| `GET`    | `/categories/:id`             | Public  | Get category by ID.                    |
+| `PATCH`  | `/categories/:id`             | `admin` | Update category. Accepts `image` file. |
+| `DELETE` | `/categories/:id`             | `admin` | Soft delete category.                  |
+
+### Products
+
+| Method   | Path                       | Access  | Notes                                                    |
+| -------- | -------------------------- | ------- | -------------------------------------------------------- |
+| `POST`   | `/products/create-product` | `admin` | Create product. Accepts up to 5 `images` files.          |
+| `GET`    | `/products`                | Public  | List products with search, filter, sort, and pagination. |
+| `GET`    | `/products/:id`            | Public  | Get product by ID or slug.                               |
+| `PATCH`  | `/products/:id`            | `admin` | Update product. Accepts up to 5 `images` files.          |
+| `DELETE` | `/products/:id`            | `admin` | Soft delete product.                                     |
+
+Supported `GET /products` query params:
+
+- `page`
+- `limit`
+- `searchTerm`
+- `category`
+- `brand`
+- `stock` with `in-stock` or `out-of-stock`
+- `minPrice`
+- `maxPrice`
+- `minRating`
+- `sortBy` with `newest`, `createdAt`, `updatedAt`, `name`, `price`, `stock`, or `rating`
+- `sortOrder` with `asc` or `desc`
+
+### Orders
+
+| Method   | Path                        | Access          | Notes                                                      |
+| -------- | --------------------------- | --------------- | ---------------------------------------------------------- |
+| `POST`   | `/orders/create-order`      | `user`, `admin` | Create an order and payment session.                       |
+| `GET`    | `/orders/my-orders`         | `user`, `admin` | List authenticated user's orders.                          |
+| `POST`   | `/orders/payment/success`   | Public          | SSLCommerz success callback.                               |
+| `GET`    | `/orders/payment/success`   | Public          | SSLCommerz success callback.                               |
+| `POST`   | `/orders/payment/fail`      | Public          | SSLCommerz failure callback.                               |
+| `GET`    | `/orders/payment/fail`      | Public          | SSLCommerz failure callback.                               |
+| `POST`   | `/orders/payment/cancel`    | Public          | SSLCommerz cancel callback.                                |
+| `GET`    | `/orders/payment/cancel`    | Public          | SSLCommerz cancel callback.                                |
+| `POST`   | `/orders/payment/ipn`       | Public          | SSLCommerz IPN callback.                                   |
+| `GET`    | `/orders`                   | `admin`         | List all orders.                                           |
+| `GET`    | `/orders/:id`               | `user`, `admin` | Get a single order. Users are limited to their own orders. |
+| `POST`   | `/orders/:id/shipment`      | `super_admin`   | Create a Steadfast shipment.                               |
+| `POST`   | `/orders/:id/shipment/sync` | `admin`         | Sync courier status for one order.                         |
+| `PATCH`  | `/orders/:id/status`        | `admin`         | Update order status.                                       |
+| `POST`   | `/orders/:id/cancel`        | `user`, `admin` | Cancel an order when allowed.                              |
+| `DELETE` | `/orders/:id`               | `admin`         | Soft delete an order.                                      |
+
+Order status flow:
+
+```txt
+pending -> confirmed -> processing -> shipped -> delivered
+```
+
+Cancellation behavior:
+
+- Orders can be cancelled while `pending`, `confirmed`, or `processing`.
+- Users can cancel only their own orders.
+- Admins can cancel any order.
+- Cancelling restores product stock.
+- Paid cancelled orders are marked as refunded where applicable.
+
+### Reviews
+
+| Method   | Path                           | Access          | Notes                                 |
+| -------- | ------------------------------ | --------------- | ------------------------------------- |
+| `POST`   | `/reviews/create-review`       | `user`, `admin` | Create a review.                      |
+| `GET`    | `/reviews/admin`               | `admin`         | Admin review list.                    |
+| `GET`    | `/reviews/my-reviews`          | `user`, `admin` | Authenticated user's reviews.         |
+| `GET`    | `/reviews/reviewable-products` | `user`, `admin` | Products the user can review.         |
+| `GET`    | `/reviews`                     | Public          | Public review list.                   |
+| `GET`    | `/reviews/product/:productId`  | Public          | Reviews for one product.              |
+| `GET`    | `/reviews/:id`                 | Public          | Single review.                        |
+| `PATCH`  | `/reviews/:id/visibility`      | `admin`         | Toggle/moderate review visibility.    |
+| `PATCH`  | `/reviews/:id`                 | `user`, `admin` | Update review. Owners or admins only. |
+| `DELETE` | `/reviews/:id`                 | `user`, `admin` | Delete review. Owners or admins only. |
+
+### Wishlist
+
+| Method   | Path                            | Access          | Notes                                |
+| -------- | ------------------------------- | --------------- | ------------------------------------ |
+| `POST`   | `/wishlists/create-wishlist`    | `user`, `admin` | Add product to wishlist.             |
+| `GET`    | `/wishlists/my-wishlist`        | `user`, `admin` | Get authenticated user's wishlist.   |
+| `GET`    | `/wishlists/dashboard`          | `user`, `admin` | Dashboard-oriented wishlist data.    |
+| `DELETE` | `/wishlists/clear`              | `user`, `admin` | Clear own wishlist.                  |
+| `DELETE` | `/wishlists/product/:productId` | `user`, `admin` | Remove by product ID.                |
+| `DELETE` | `/wishlists/:id`                | `user`, `admin` | Remove wishlist item by wishlist ID. |
+
+### Addresses
+
+| Method   | Path                         | Access          | Notes                    |
+| -------- | ---------------------------- | --------------- | ------------------------ |
+| `POST`   | `/addresses`                 | `user`, `admin` | Create address.          |
+| `GET`    | `/addresses/my-addresses`    | `user`, `admin` | List own addresses.      |
+| `PATCH`  | `/addresses/:id`             | `user`, `admin` | Update own address.      |
+| `DELETE` | `/addresses/:id`             | `user`, `admin` | Delete own address.      |
+| `PATCH`  | `/addresses/:id/set-default` | `user`, `admin` | Mark address as default. |
+
+### Dashboard
+
+| Method | Path                     | Access          | Notes                                 |
+| ------ | ------------------------ | --------------- | ------------------------------------- |
+| `GET`  | `/dashboard/admin-stats` | `admin`         | Admin dashboard summary.              |
+| `GET`  | `/dashboard/my-stats`    | `user`, `admin` | Authenticated user dashboard summary. |
+
+Useful admin dashboard query params:
+
+- `dateFrom`
+- `dateTo`
+- `orderStatus`
+- `paymentStatus`
+
+### Analytics
+
+| Method | Path               | Access  | Notes                   |
+| ------ | ------------------ | ------- | ----------------------- |
+| `GET`  | `/analytics/admin` | `admin` | Admin analytics report. |
+
+### Activity Logs
+
+| Method | Path                   | Access  | Notes                    |
+| ------ | ---------------------- | ------- | ------------------------ |
+| `GET`  | `/activity-logs/stats` | `admin` | Activity log statistics. |
+| `GET`  | `/activity-logs/:id`   | `admin` | Get one activity log.    |
+| `GET`  | `/activity-logs`       | `admin` | List activity logs.      |
+
+### Payment Logs
+
+| Method | Path                       | Access  | Notes                                |
+| ------ | -------------------------- | ------- | ------------------------------------ |
+| `GET`  | `/payment-logs/stats`      | `admin` | Payment log statistics.              |
+| `GET`  | `/payment-logs/:publicRef` | `admin` | Get payment log by public reference. |
+| `GET`  | `/payment-logs`            | `admin` | List payment logs.                   |
+
+### Home Content
+
+| Method  | Path                 | Access  | Notes                                              |
+| ------- | -------------------- | ------- | -------------------------------------------------- |
+| `GET`   | `/home-content/hero` | Public  | Get home hero content.                             |
+| `PATCH` | `/home-content/hero` | `admin` | Update hero content. Accepts multiple image files. |
+
+### Promo
+
+| Method  | Path             | Access  | Notes                    |
+| ------- | ---------------- | ------- | ------------------------ |
+| `GET`   | `/promos/active` | Public  | Get active promo banner. |
+| `PATCH` | `/promos`        | `admin` | Update promo banner.     |
+
+### Locations
+
+| Method | Path                                     | Access | Notes                                         |
+| ------ | ---------------------------------------- | ------ | --------------------------------------------- |
+| `GET`  | `/locations/districts`                   | Public | Proxy Steadfast district/police-station data. |
+| `GET`  | `/locations/districts/:districtId/zones` | Public | Proxy Steadfast zone data.                    |
+
+### Delivery
+
+| Method | Path                          | Access | Notes                                     |
+| ------ | ----------------------------- | ------ | ----------------------------------------- |
+| `POST` | `/delivery/webhook/steadfast` | Public | Receive Steadfast courier status updates. |
+
+If `STEADFAST_WEBHOOK_SECRET` is configured, webhook callers should send:
+
+```txt
+x-steadfast-signature: HMAC_SHA256_HEX_OF_JSON_PAYLOAD
+```
+
+## Uploads And Images
+
+Image upload endpoints use `multer` with memory storage and send files to Cloudinary through `src/app/utils/cloudinary.ts`.
+
+Upload limits:
+
+- Category image: one `image` file, max `5 MB`.
+- Product images: up to five `images` files, max `5 MB` each.
+- Profile avatar: one `avatar` file, max `5 MB`.
+- Home hero images: multiple files, max five files, max `5 MB` each.
+
+Local `uploads/` behavior:
+
+- The app serves `/uploads` from a local upload directory.
+- The `seed:artist-brushes` script can create local SVG files under `uploads/products`.
+- `uploads/` is ignored by git and is safe to regenerate for local seed/demo data.
+- If database records point to local `/uploads/...` URLs, deleting `uploads/` will leave those records pointing at missing local files.
+
+## Payments
+
+Orders integrate with SSLCommerz.
+
+Important payment routes:
+
+- `/orders/payment/success`
+- `/orders/payment/fail`
+- `/orders/payment/cancel`
+- `/orders/payment/ipn`
+
+Operational notes:
+
+- Configure `SSLCOMMERZ_STORE_ID` and `SSLCOMMERZ_STORE_PASSWORD`.
+- Set `SSLCOMMERZ_IS_LIVE=true` only for live credentials.
+- Payment activity is recorded in the `paymentLog` module.
+- Admins can inspect payment logs through `/payment-logs`.
+
+## Courier And Delivery
+
+Steadfast integration is handled by the `shipping`, `location`, and `delivery` modules.
+
+Features:
+
+- Public location proxy endpoints keep courier credentials server-side.
+- Super admins can create shipments for orders.
+- Admins can sync shipment status for an order.
+- A background poller starts when the server starts and periodically syncs courier statuses.
+- Steadfast webhooks can update matching orders by courier data.
+
+Configure:
+
+```env
+STEADFAST_API_KEY=
+STEADFAST_SECRET_KEY=
+STEADFAST_BASE_URL=https://portal.packzy.com/api/v1
+COURIER_SYNC_INTERVAL_MS=900000
+```
+
+## Seeding
+
+### Super Admin
+
+Add the required super-admin values to `.env`:
+
+```env
+SUPER_ADMIN_EMAIL=admin@example.com
+SUPER_ADMIN_PASSWORD=strong-password
+SUPER_ADMIN_NAME=Super Admin
+SUPER_ADMIN_PHONE=
+SUPER_ADMIN_RESET_PASSWORD=false
+```
+
+Then run:
+
+```bash
+npm run seed:super-admin
+```
+
+### Artist Brush Products
+
+Seed data lives in:
+
+```txt
+src/app/seed/seed-products.json
+```
+
+Run:
+
+```bash
+npm run seed:artist-brushes
+```
+
+The seed script:
+
+- Connects to MongoDB using `DATABASE_URL`.
+- Upserts the configured category.
+- Upserts products from the JSON file.
+- Creates local seed images under `uploads/products` when missing.
+- Uses `SEED_PUBLIC_BASE_URL` if provided, otherwise `http://localhost:${PORT}`.
+- Uses `SEED_DNS_SERVERS` if provided, otherwise `8.8.8.8,1.1.1.1`.
+
+Optional seed variables:
+
+```env
+SEED_PUBLIC_BASE_URL=http://localhost:5000
+SEED_DNS_SERVERS=8.8.8.8,1.1.1.1
+```
+
+## Response Format
+
+Most successful responses use this shape:
 
 ```json
 {
   "success": true,
   "message": "Request completed successfully",
   "meta": {},
-  "data": {},
-  "errorSources": []
+  "data": {}
 }
 ```
 
-Paginated routes return pagination info in `meta`:
+Errors are normalized by the global error handler:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errorSources": [
+    {
+      "path": "email",
+      "message": "Invalid email"
+    }
+  ],
+  "stack": "Only included outside production when configured"
+}
+```
+
+Paginated responses include `meta`:
 
 ```json
 {
@@ -356,41 +629,82 @@ Paginated routes return pagination info in `meta`:
 }
 ```
 
+## Pagination And Filtering
+
 Default pagination:
 
 - `page=1`
 - `limit=10`
 - maximum `limit=100`
 
-## Validation and Error Handling
+Common list endpoints support pagination-style query params where implemented:
 
-This project uses:
+- products
+- users
+- orders
+- reviews
+- payment logs
+- activity logs
+- dashboard/analytics endpoints
 
-- `Zod` for request validation
-- shared `validateRequest` middleware
-- custom `AppError` for operational errors
-- centralized global error handling
-- duplicate key, cast error, validation error, and Zod error formatting
+Product listing has the richest query support and includes search, category, brand, stock, price, rating, and sort options.
 
-## Important Implementation Notes
+## Validation And Error Handling
 
-- soft delete is used across multiple modules via `isDeleted`
-- products reference categories and populate category `name` and `slug`
-- product list rating is computed dynamically from non-deleted reviews
-- orders store product snapshots such as `productName`, `productSlug`, `unitPrice`, `quantity`, and `subtotal`
-- order, review, and dashboard data use populated user and product references where needed
-- the server sets Google DNS (`8.8.8.8`, `8.8.4.4`) before connecting to MongoDB to avoid SRV lookup issues
-- `cors()` and `express.json()` are enabled globally
+The API uses:
+
+- `Zod` schemas for request validation.
+- `validateRequest` middleware for validating route payloads.
+- `AppError` for operational errors.
+- Centralized `globalErrorHandler`.
+- Specialized handlers for Zod errors, Mongoose validation errors, duplicate key errors, and cast errors.
+- `catchAsync` wrappers on routes where controllers return promises through Express middleware.
+
+## Build And Deployment Notes
+
+Build output:
+
+```bash
+npm run build
+```
+
+Start compiled output:
+
+```bash
+npm run start
+```
+
+Deployment checklist:
+
+- Set all required environment variables in the host.
+- Run `npm install` or equivalent production dependency installation.
+- Run `npm run build`.
+- Start `dist/server.js`.
+- Ensure MongoDB is reachable from the host.
+- Configure Cloudinary before using image upload APIs.
+- Configure SSLCommerz callback URLs to point to the deployed `/api/v1/orders/payment/*` endpoints.
+- Configure Steadfast webhook URL to point to `/api/v1/delivery/webhook/steadfast`.
+
+Notes:
+
+- `dist/` is generated and ignored by git.
+- `.env` and `.env.*` are ignored except `.env.example`.
+- Uploaded or seeded local files under `uploads/` are ignored by git.
+- On Vercel, `uploadBaseDir` uses the OS temp directory; otherwise it uses the project root.
+
+## Known Maintenance Notes
+
+- `npm run build` currently passes.
+- `npm run lint` currently reports existing formatting issues and an unused import in `homeContent.controller.ts`.
+- `npm run test` is still a placeholder and does not run automated tests yet.
+- Some scanner warnings about unused exported handlers are false positives caused by the project pattern of exporting both individual functions and grouped service/controller objects.
 
 ## Suggested Next Improvements
 
-- refresh token verification/rotation and logout endpoints
-- stronger review rules based on completed purchases
-- dashboard filters for date ranges and order status
-- payment gateway integration
-- image upload integration with cloud storage
-- automated tests for auth, product, order, review, and dashboard modules
-
-## Status
-
-This backend is already a solid base for a simple single-vendor e-commerce application and now includes both operational sales flows and a lightweight admin dashboard API.
+- Add real automated tests for auth, catalog, orders, payments, reviews, and admin dashboards.
+- Add refresh-token rotation and logout endpoints.
+- Add OpenAPI/Swagger documentation generated from route schemas.
+- Add stricter purchase-based review eligibility tests.
+- Add CI checks for build, lint, and formatting.
+- Standardize route formatting with Prettier.
+- Consider storing all seed/demo images in Cloudinary for production-like environments.
