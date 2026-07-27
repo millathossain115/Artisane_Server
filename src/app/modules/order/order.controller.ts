@@ -2,6 +2,7 @@ import AppError from '../../errors/appError.js';
 import config from '../../config/index.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { USER_ROLE } from '../user/user.constant.js';
 import { OrderServices } from './order.service.js';
 
@@ -34,6 +35,7 @@ const createOrder = catchAsync(async (req, res) => {
     req.user.userId,
     req.body,
     serverBaseUrl,
+    ActivityLogServices.createActivityContext(req),
   );
 
   sendResponse(res, {
@@ -102,7 +104,11 @@ const updateOrderStatus = catchAsync(async (req, res) => {
     throw new AppError(400, 'Order id is required');
   }
 
-  const result = await OrderServices.updateOrderStatusIntoDB(id, req.body);
+  const result = await OrderServices.updateOrderStatusIntoDB(
+    id,
+    req.body,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'Order not found');
@@ -123,7 +129,11 @@ const createShipment = catchAsync(async (req, res) => {
     throw new AppError(400, 'Order id is required');
   }
 
-  const result = await OrderServices.createShipmentIntoDB(id, req.body);
+  const result = await OrderServices.createShipmentIntoDB(
+    id,
+    req.body,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'Order not found');
@@ -144,7 +154,10 @@ const syncShipment = catchAsync(async (req, res) => {
     throw new AppError(400, 'Order id is required');
   }
 
-  const result = await OrderServices.syncShipmentIntoDB(id);
+  const result = await OrderServices.syncShipmentIntoDB(
+    id,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'Order not found');
@@ -161,7 +174,10 @@ const syncShipment = catchAsync(async (req, res) => {
 const sslcommerzSuccess = catchAsync(async (req, res) => {
   const payload = getPaymentCallbackPayload(req);
 
-  await OrderServices.markOrderAsPaid(payload);
+  await OrderServices.markOrderAsPaid(
+    payload,
+    ActivityLogServices.createActivityContext(req, 'payment_gateway'),
+  );
 
   res.redirect(
     buildPaymentRedirectUrl(
@@ -174,7 +190,10 @@ const sslcommerzSuccess = catchAsync(async (req, res) => {
 const sslcommerzFail = catchAsync(async (req, res) => {
   const payload = getPaymentCallbackPayload(req);
 
-  await OrderServices.markOrderPaymentFailed(payload);
+  await OrderServices.markOrderPaymentFailed(
+    payload,
+    ActivityLogServices.createActivityContext(req, 'payment_gateway'),
+  );
 
   res.redirect(
     buildPaymentRedirectUrl(
@@ -187,7 +206,10 @@ const sslcommerzFail = catchAsync(async (req, res) => {
 const sslcommerzCancel = catchAsync(async (req, res) => {
   const payload = getPaymentCallbackPayload(req);
 
-  await OrderServices.markOrderPaymentFailed(payload);
+  await OrderServices.markOrderPaymentFailed(
+    payload,
+    ActivityLogServices.createActivityContext(req, 'payment_gateway'),
+  );
 
   res.redirect(
     buildPaymentRedirectUrl(
@@ -198,7 +220,10 @@ const sslcommerzCancel = catchAsync(async (req, res) => {
 });
 
 const sslcommerzIpn = catchAsync(async (req, res) => {
-  const result = await OrderServices.handleSslcommerzIpn(req.body);
+  const result = await OrderServices.handleSslcommerzIpn(
+    req.body,
+    ActivityLogServices.createActivityContext(req, 'payment_gateway'),
+  );
 
   sendResponse(res, {
     statusCode: 200,
@@ -219,6 +244,7 @@ const cancelOrder = catchAsync(async (req, res) => {
     id,
     req.user.userId,
     req.user.role,
+    ActivityLogServices.createActivityContext(req),
   );
 
   if (!result) {
@@ -240,7 +266,10 @@ const deleteSingleOrder = catchAsync(async (req, res) => {
     throw new AppError(400, 'Order id is required');
   }
 
-  const result = await OrderServices.deleteSingleOrderFromDB(id);
+  const result = await OrderServices.deleteSingleOrderFromDB(
+    id,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'Order not found');

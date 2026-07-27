@@ -5,11 +5,16 @@ import {
   calculatePagination,
 } from '../../utils/pagination.js';
 import { Category } from '../category/category.model.js';
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import type { IProduct } from './product.interface.js';
 import { Product } from './product.model.js';
 import { buildProductAggregationPipeline } from './product.queryBuilder.js';
 
-const createProductIntoDB = async (payload: IProduct) => {
+const createProductIntoDB = async (
+  payload: IProduct,
+  activityContext?: IActivityLogContext,
+) => {
   const existingProduct = await Product.findOne({
     slug: payload.slug,
   });
@@ -33,6 +38,20 @@ const createProductIntoDB = async (payload: IProduct) => {
     'category',
     'name slug',
   );
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'product.created',
+      module: 'products',
+      severity: 'low',
+      status: 'success',
+      summary: `Product ${result.name} was created`,
+      targetId: result._id.toString(),
+      targetLabel: result.name,
+      targetType: 'product',
+    });
+  }
 
   return result;
 };
@@ -64,7 +83,20 @@ const getSingleProductFromDB = async (id: string) => {
   return result;
 };
 
-const updateProductIntoDB = async (id: string, payload: Partial<IProduct>) => {
+const updateProductIntoDB = async (
+  id: string,
+  payload: Partial<IProduct>,
+  activityContext?: IActivityLogContext,
+) => {
+  const existingProduct = await Product.findOne({
+    _id: id,
+    isDeleted: false,
+  }).populate('category', 'name slug');
+
+  if (!existingProduct) {
+    return null;
+  }
+
   if (payload.slug) {
     const existingProduct = await Product.findOne({
       _id: { $ne: id },
@@ -97,15 +129,57 @@ const updateProductIntoDB = async (id: string, payload: Partial<IProduct>) => {
     'name slug',
   );
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'product.updated',
+      changes: ActivityLogServices.buildActivityChanges(existingProduct, result, [
+        'name',
+        'slug',
+        'description',
+        'price',
+        'stock',
+        'category',
+        'brand',
+        'images',
+      ]),
+      module: 'products',
+      severity: 'low',
+      status: 'success',
+      summary: `Product ${result.name} was updated`,
+      targetId: result._id.toString(),
+      targetLabel: result.name,
+      targetType: 'product',
+    });
+  }
+
   return result;
 };
 
-const deleteSingleProductFromDB = async (id: string) => {
+const deleteSingleProductFromDB = async (
+  id: string,
+  activityContext?: IActivityLogContext,
+) => {
   const result = await Product.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },
     { returnDocument: 'after' },
   ).populate('category', 'name slug');
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'product.deleted',
+      changes: [{ after: true, before: false, field: 'isDeleted' }],
+      module: 'products',
+      severity: 'medium',
+      status: 'success',
+      summary: `Product ${result.name} was deleted`,
+      targetId: result._id.toString(),
+      targetLabel: result.name,
+      targetType: 'product',
+    });
+  }
 
   return result;
 };

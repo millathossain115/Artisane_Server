@@ -4,6 +4,8 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import '../category/category.model.js';
 import { Product } from '../product/product.model.js';
 import { User } from '../user/user.model.js';
@@ -26,6 +28,7 @@ const populateWishlist = <T>(query: Query<T, IWishlist>) =>
 const createWishlistIntoDB = async (
   userId: string,
   payload: ICreateWishlistPayload,
+  activityContext?: IActivityLogContext,
 ) => {
   const user = await User.findOne({ _id: userId, isDeleted: false });
 
@@ -53,12 +56,42 @@ const createWishlistIntoDB = async (
       await existingWishlist.save();
     }
 
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'wishlist.added',
+      actorId: userId,
+      actorRole: activityContext?.actorRole ?? 'user',
+      module: 'wishlist',
+      severity: 'low',
+      source: activityContext?.source ?? 'user',
+      status: 'success',
+      summary: `${user.name} added ${product.name} to wishlist`,
+      targetId: existingWishlist._id.toString(),
+      targetLabel: product.name,
+      targetType: 'wishlist',
+    });
+
     return populateWishlist(Wishlist.findById(existingWishlist._id));
   }
 
   const createdWishlist = await Wishlist.create({
     user: user._id,
     product: product._id,
+  });
+
+  await ActivityLogServices.recordActivity({
+    ...activityContext,
+    action: 'wishlist.added',
+    actorId: userId,
+    actorRole: activityContext?.actorRole ?? 'user',
+    module: 'wishlist',
+    severity: 'low',
+    source: activityContext?.source ?? 'user',
+    status: 'success',
+    summary: `${user.name} added ${product.name} to wishlist`,
+    targetId: createdWishlist._id.toString(),
+    targetLabel: product.name,
+    targetType: 'wishlist',
   });
 
   return populateWishlist(Wishlist.findById(createdWishlist._id));
@@ -112,6 +145,7 @@ const deleteWishlistFromDB = async (
   id: string,
   userId: string,
   userRole: string,
+  activityContext?: IActivityLogContext,
 ) => {
   const wishlist = await Wishlist.findOne({ _id: id, isDeleted: false });
 
@@ -123,18 +157,39 @@ const deleteWishlistFromDB = async (
     throw new AppError(403, 'You are not allowed to delete this wishlist item');
   }
 
-  return populateWishlist(
+  const result = await populateWishlist(
     Wishlist.findOneAndUpdate(
       { _id: id, isDeleted: false },
       { isDeleted: true },
       { returnDocument: 'after' },
     ),
   );
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'wishlist.removed',
+      actorId: userId,
+      actorRole: userRole === 'admin' ? 'admin' : 'user',
+      changes: [{ after: true, before: false, field: 'isDeleted' }],
+      module: 'wishlist',
+      severity: 'low',
+      source: activityContext?.source ?? (userRole === 'admin' ? 'admin' : 'user'),
+      status: 'success',
+      summary: `Wishlist item ${id} was removed`,
+      targetId: id,
+      targetLabel: id,
+      targetType: 'wishlist',
+    });
+  }
+
+  return result;
 };
 
 const deleteWishlistByProductFromDB = async (
   productId: string,
   userId: string,
+  activityContext?: IActivityLogContext,
 ) => {
   const result = await populateWishlist(
     Wishlist.findOneAndUpdate(
@@ -144,14 +199,50 @@ const deleteWishlistByProductFromDB = async (
     ),
   );
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'wishlist.removed',
+      actorId: userId,
+      actorRole: activityContext?.actorRole ?? 'user',
+      changes: [{ after: true, before: false, field: 'isDeleted' }],
+      module: 'wishlist',
+      severity: 'low',
+      source: activityContext?.source ?? 'user',
+      status: 'success',
+      summary: `Wishlist item for product ${productId} was removed`,
+      targetId: productId,
+      targetLabel: productId,
+      targetType: 'wishlist',
+    });
+  }
+
   return result;
 };
 
-const clearMyWishlistFromDB = async (userId: string) => {
+const clearMyWishlistFromDB = async (
+  userId: string,
+  activityContext?: IActivityLogContext,
+) => {
   const result = await Wishlist.updateMany(
     { user: userId, isDeleted: false },
     { isDeleted: true },
   );
+
+  await ActivityLogServices.recordActivity({
+    ...activityContext,
+    action: 'wishlist.cleared',
+    actorId: userId,
+    actorRole: activityContext?.actorRole ?? 'user',
+    metadata: { deletedCount: result.modifiedCount },
+    module: 'wishlist',
+    severity: 'low',
+    source: activityContext?.source ?? 'user',
+    status: 'success',
+    summary: `Wishlist was cleared`,
+    targetId: userId,
+    targetType: 'user',
+  });
 
   return {
     deletedCount: result.modifiedCount,

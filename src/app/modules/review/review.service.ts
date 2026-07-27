@@ -3,6 +3,8 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { ORDER_STATUS, PAYMENT_STATUS } from '../order/order.constant.js';
 import { Order } from '../order/order.model.js';
 import { Product } from '../product/product.model.js';
@@ -75,6 +77,7 @@ const assertProductIsReviewable = async (userId: string, productId: string) => {
 const createReviewIntoDB = async (
   userId: string,
   payload: ICreateReviewPayload,
+  activityContext?: IActivityLogContext,
 ) => {
   const user = await User.findOne({ _id: userId, isDeleted: false });
 
@@ -117,6 +120,24 @@ const createReviewIntoDB = async (
   const result = await Review.findById(createdReview._id)
     .populate(reviewPopulate[0])
     .populate(reviewPopulate[1]);
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'review.created',
+      actorId: userId,
+      actorRole: activityContext?.actorRole ?? 'user',
+      metadata: { rating: result.rating },
+      module: 'reviews',
+      severity: 'low',
+      source: activityContext?.source ?? 'user',
+      status: 'success',
+      summary: `${user.name} reviewed ${product.name}`,
+      targetId: result._id.toString(),
+      targetLabel: product.name,
+      targetType: 'review',
+    });
+  }
 
   return result;
 };
@@ -246,6 +267,7 @@ const updateReviewIntoDB = async (
   userId: string,
   userRole: string,
   payload: IUpdateReviewPayload,
+  activityContext?: IActivityLogContext,
 ) => {
   const review = await Review.findOne({ _id: id, isDeleted: false });
 
@@ -265,6 +287,27 @@ const updateReviewIntoDB = async (
     .populate(reviewPopulate[0])
     .populate(reviewPopulate[1]);
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'review.updated',
+      actorId: userId,
+      actorRole: userRole === 'admin' ? 'admin' : 'user',
+      changes: ActivityLogServices.buildActivityChanges(review, result, [
+        'rating',
+        'comment',
+      ]),
+      module: 'reviews',
+      severity: 'low',
+      source: activityContext?.source ?? (userRole === 'admin' ? 'admin' : 'user'),
+      status: 'success',
+      summary: `Review ${result._id.toString()} was updated`,
+      targetId: result._id.toString(),
+      targetLabel: result._id.toString(),
+      targetType: 'review',
+    });
+  }
+
   return result;
 };
 
@@ -272,6 +315,7 @@ const deleteSingleReviewFromDB = async (
   id: string,
   userId: string,
   userRole: string,
+  activityContext?: IActivityLogContext,
 ) => {
   const review = await Review.findOne({ _id: id, isDeleted: false });
 
@@ -291,6 +335,24 @@ const deleteSingleReviewFromDB = async (
     .populate(reviewPopulate[0])
     .populate(reviewPopulate[1]);
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'review.deleted',
+      actorId: userId,
+      actorRole: userRole === 'admin' ? 'admin' : 'user',
+      changes: [{ after: true, before: false, field: 'isDeleted' }],
+      module: 'reviews',
+      severity: userRole === 'admin' ? 'medium' : 'low',
+      source: activityContext?.source ?? (userRole === 'admin' ? 'admin' : 'user'),
+      status: 'success',
+      summary: `Review ${result._id.toString()} was deleted`,
+      targetId: result._id.toString(),
+      targetLabel: result._id.toString(),
+      targetType: 'review',
+    });
+  }
+
   return result;
 };
 
@@ -298,6 +360,7 @@ const updateReviewVisibilityIntoDB = async (
   id: string,
   adminId: string,
   payload: IUpdateReviewVisibilityPayload,
+  activityContext?: IActivityLogContext,
 ) => {
   const review = await Review.findOne({ _id: id, isDeleted: false });
 
@@ -327,6 +390,30 @@ const updateReviewVisibilityIntoDB = async (
     .populate(reviewPopulate[0])
     .populate(reviewPopulate[1])
     .populate(reviewPopulate[2]);
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: payload.isHidden ? 'review.hidden' : 'review.unhidden',
+      actorId: adminId,
+      actorRole: 'admin',
+      changes: ActivityLogServices.buildActivityChanges(review, result, [
+        'isHidden',
+        'hiddenAt',
+        'hiddenBy',
+      ]),
+      module: 'reviews',
+      severity: 'medium',
+      source: activityContext?.source ?? 'admin',
+      status: 'success',
+      summary: `Review ${result._id.toString()} was ${
+        payload.isHidden ? 'hidden' : 'unhidden'
+      }`,
+      targetId: result._id.toString(),
+      targetLabel: result._id.toString(),
+      targetType: 'review',
+    });
+  }
 
   return result;
 };

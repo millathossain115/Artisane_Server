@@ -1,3 +1,5 @@
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import type { IHomeHeroContent, IHomeHeroSlide } from './homeContent.model.js';
 import { HomeHeroContent } from './homeContent.model.js';
 
@@ -58,17 +60,49 @@ const getHomeHero = async () => {
   return hero;
 };
 
-const upsertHomeHero = async (payload: HomeHeroContentPayload) => {
+const upsertHomeHero = async (
+  payload: HomeHeroContentPayload,
+  activityContext?: IActivityLogContext,
+) => {
   const normalizedPayload = normalizeHeroPayload(payload);
   const existingHero = await HomeHeroContent.findOne().sort({ updatedAt: -1 });
 
   if (existingHero) {
+    const before = existingHero.toObject();
     Object.assign(existingHero, normalizedPayload);
     await existingHero.save();
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'home_content.updated',
+      changes: ActivityLogServices.buildActivityChanges(before, existingHero, [
+        'isActive',
+        'autoplaySeconds',
+        'fadeMs',
+        'slides',
+      ]),
+      module: 'home_content',
+      severity: 'low',
+      status: 'success',
+      summary: 'Home hero content was updated',
+      targetId: existingHero._id.toString(),
+      targetLabel: 'Home hero',
+      targetType: 'home_hero',
+    });
     return existingHero;
   }
 
   const createdHero = await HomeHeroContent.create(normalizedPayload);
+  await ActivityLogServices.recordActivity({
+    ...activityContext,
+    action: 'home_content.created',
+    module: 'home_content',
+    severity: 'low',
+    status: 'success',
+    summary: 'Home hero content was created',
+    targetId: createdHero._id.toString(),
+    targetLabel: 'Home hero',
+    targetType: 'home_hero',
+  });
   return createdHero;
 };
 

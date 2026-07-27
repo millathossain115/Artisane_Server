@@ -4,6 +4,7 @@ import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import { uploadImageToCloudinary } from '../../utils/cloudinary.js';
 import sendResponse from '../../utils/sendResponse.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { HomeContentServices } from './homeContent.service.js';
 import type { HomeHeroContentPayload } from './homeContent.service.js';
 import { HomeContentValidations } from './homeContent.validation.js';
@@ -116,10 +117,13 @@ const updateHomeHeroHandler = async (req: Request, res: Response) => {
 
     return uploadedImage ? { ...slide, image: uploadedImage } : slide;
   });
-  const hero = await HomeContentServices.upsertHomeHero({
-    ...payload,
-    ...(slides ? { slides } : {}),
-  });
+  const hero = await HomeContentServices.upsertHomeHero(
+    {
+      ...payload,
+      ...(slides ? { slides } : {}),
+    },
+    ActivityLogServices.createActivityContext(req),
+  );
 
   sendResponse(res, {
     statusCode: 200,

@@ -9,6 +9,8 @@ import { createPaymentLog } from '../paymentLog/paymentLog.service.js';
 import { Product } from '../product/product.model.js';
 import { PromoBanner } from '../promo/promo.model.js';
 import { ShippingServices } from '../shipping/shipping.service.js';
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { User } from '../user/user.model.js';
 import {
   CANCELLABLE_ORDER_STATUSES,
@@ -78,6 +80,16 @@ const populateOrder = <T>(query: Query<T, IOrder>) =>
 const generateTransactionId = () => {
   return `ART${Date.now()}${Math.round(Math.random() * 1e6)}`;
 };
+
+const getOrderLogTargetId = (
+  order: Pick<IOrder, '_id' | 'transactionId'>,
+  fallbackId = '',
+) => order._id?.toString() ?? fallbackId;
+
+const getOrderLogLabel = (
+  order: Pick<IOrder, '_id' | 'transactionId'>,
+  fallbackId = 'order',
+) => order.transactionId ?? order._id?.toString() ?? fallbackId;
 
 const getSslcommerzCredentials = () => {
   const storeId = config.sslcommerz.store_id;
@@ -368,6 +380,7 @@ const createOrderIntoDB = async (
   userId: string,
   payload: ICreateOrderPayload,
   serverBaseUrl: string,
+  activityContext?: IActivityLogContext,
 ) => {
   const user = await User.findOne({ _id: userId, isDeleted: false });
 
@@ -470,6 +483,26 @@ const createOrderIntoDB = async (
     },
   });
 
+  await ActivityLogServices.recordActivity({
+    ...activityContext,
+    action: 'order.created',
+    actorId: userId,
+    actorRole: activityContext?.actorRole ?? 'user',
+    metadata: {
+      itemCount: createdOrder.items.length,
+      paymentMethod: createdOrder.paymentMethod,
+      totalPrice: createdOrder.totalPrice,
+    },
+    module: 'orders',
+    severity: createdOrder.fraudRisk === 'high' ? 'high' : 'low',
+    source: activityContext?.source ?? 'user',
+    status: 'success',
+    summary: `Order ${getOrderLogLabel(createdOrder)} was created`,
+    targetId: createdOrder._id.toString(),
+    targetLabel: getOrderLogLabel(createdOrder),
+    targetType: 'order',
+  });
+
   if (
     result &&
     ONLINE_PAYMENT_METHODS.has(payload.paymentMethod) &&
@@ -496,6 +529,7 @@ const createOrderIntoDB = async (
 const createShipmentIntoDB = async (
   id: string,
   payload: ICreateShipmentPayload,
+  activityContext?: IActivityLogContext,
 ) => {
   const order = await Order.findOne({ _id: id, isDeleted: false });
 
@@ -584,10 +618,37 @@ const createShipmentIntoDB = async (
     ),
   );
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'shipment.created',
+      changes: ActivityLogServices.buildActivityChanges(order, result, [
+        'courierOrderId',
+        'courierProvider',
+        'courierStatus',
+        'orderStatus',
+        'shipmentCreatedAt',
+        'trackingCode',
+        'trackingUrl',
+      ]),
+      metadata: { courierProvider: result.courierProvider },
+      module: 'shipping',
+      severity: 'low',
+      status: 'success',
+      summary: `Shipment was created for order ${getOrderLogLabel(result)}`,
+      targetId: getOrderLogTargetId(result, id),
+      targetLabel: getOrderLogLabel(result, id),
+      targetType: 'order',
+    });
+  }
+
   return result;
 };
 
-const syncShipmentIntoDB = async (id: string) => {
+const syncShipmentIntoDB = async (
+  id: string,
+  activityContext?: IActivityLogContext,
+) => {
   const order = await Order.findOne({ _id: id, isDeleted: false });
 
   if (!order) {
@@ -645,6 +706,31 @@ const syncShipmentIntoDB = async (id: string) => {
     }),
   );
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'shipment.synced',
+      changes: ActivityLogServices.buildActivityChanges(order, result, [
+        'courierStatus',
+        'orderStatus',
+        'lastCourierSyncAt',
+        'shippedAt',
+        'deliveredAt',
+        'paymentStatus',
+        'paidAt',
+      ]),
+      metadata: { courierProvider: result.courierProvider },
+      module: 'shipping',
+      severity: 'low',
+      source: activityContext?.source ?? 'admin',
+      status: 'success',
+      summary: `Shipment status synced for order ${getOrderLogLabel(result)}`,
+      targetId: getOrderLogTargetId(result, id),
+      targetLabel: getOrderLogLabel(result, id),
+      targetType: 'order',
+    });
+  }
+
   return result;
 };
 
@@ -661,7 +747,10 @@ const syncPendingShipmentsIntoDB = async () => {
 
   for (const order of orders) {
     try {
-      const result = await syncShipmentIntoDB(order._id.toString());
+      const result = await syncShipmentIntoDB(order._id.toString(), {
+        actorRole: 'system',
+        source: 'scheduler',
+      });
 
       if (result) {
         synced += 1;
@@ -737,6 +826,7 @@ const getSingleOrderFromDB = async (id: string, userId?: string) => {
 const updateOrderStatusIntoDB = async (
   id: string,
   payload: Partial<Pick<IOrder, 'orderStatus' | 'paymentStatus'>>,
+  activityContext?: IActivityLogContext,
 ) => {
   const order = await Order.findOne({ _id: id, isDeleted: false });
 
@@ -803,6 +893,27 @@ const updateOrderStatusIntoDB = async (
     });
   }
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'order.status_updated',
+      changes: ActivityLogServices.buildActivityChanges(order, result, [
+        'orderStatus',
+        'paymentStatus',
+        'paidAt',
+        'shippedAt',
+        'deliveredAt',
+      ]),
+      module: 'orders',
+      severity: 'medium',
+      status: 'success',
+      summary: `Order ${getOrderLogLabel(result)} status was updated`,
+      targetId: getOrderLogTargetId(result, id),
+      targetLabel: getOrderLogLabel(result, id),
+      targetType: 'order',
+    });
+  }
+
   return result;
 };
 
@@ -810,6 +921,7 @@ const cancelOrderIntoDB = async (
   id: string,
   userId: string,
   userRole: string,
+  activityContext?: IActivityLogContext,
 ) => {
   const order = await Order.findOne({ _id: id, isDeleted: false });
 
@@ -866,6 +978,24 @@ const cancelOrderIntoDB = async (
         newPaymentStatus: nextPaymentStatus,
       },
     });
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'order.cancelled',
+      actorId: userId,
+      actorRole: userRole === 'admin' ? 'admin' : 'user',
+      changes: ActivityLogServices.buildActivityChanges(order, result, [
+        'orderStatus',
+        'paymentStatus',
+      ]),
+      module: 'orders',
+      severity: 'medium',
+      source: activityContext?.source ?? (userRole === 'admin' ? 'admin' : 'user'),
+      status: 'success',
+      summary: `Order ${getOrderLogLabel(result)} was cancelled`,
+      targetId: getOrderLogTargetId(result, id),
+      targetLabel: getOrderLogLabel(result, id),
+      targetType: 'order',
+    });
   }
 
   return result;
@@ -915,7 +1045,10 @@ const getSteadfastWebhookStatus = (payload: Record<string, unknown>) => {
   );
 };
 
-const handleSteadfastWebhook = async (payload: Record<string, unknown>) => {
+const handleSteadfastWebhook = async (
+  payload: Record<string, unknown>,
+  activityContext?: IActivityLogContext,
+) => {
   const consignmentId = getCourierPayloadValue(payload, 'consignment_id');
   const invoice = getCourierPayloadValue(payload, 'invoice');
 
@@ -972,10 +1105,39 @@ const handleSteadfastWebhook = async (payload: Record<string, unknown>) => {
     }),
   );
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'shipment.webhook_received',
+      actorRole: 'system',
+      changes: ActivityLogServices.buildActivityChanges(order, result, [
+        'courierStatus',
+        'orderStatus',
+        'lastCourierSyncAt',
+        'shippedAt',
+        'deliveredAt',
+        'paymentStatus',
+        'paidAt',
+      ]),
+      metadata: { courierProvider: 'steadfast' },
+      module: 'shipping',
+      severity: 'low',
+      source: activityContext?.source ?? 'courier_webhook',
+      status: 'success',
+      summary: `Steadfast webhook updated order ${getOrderLogLabel(result)}`,
+      targetId: getOrderLogTargetId(result, order._id?.toString()),
+      targetLabel: getOrderLogLabel(result),
+      targetType: 'order',
+    });
+  }
+
   return result;
 };
 
-const markOrderAsPaid = async (payload: Record<string, unknown>) => {
+const markOrderAsPaid = async (
+  payload: Record<string, unknown>,
+  activityContext?: IActivityLogContext,
+) => {
   const valId = getPaymentPayloadValue(payload, 'val_id');
 
   if (!valId) {
@@ -1039,13 +1201,44 @@ const markOrderAsPaid = async (payload: Record<string, unknown>) => {
     gatewayResponse: validation,
   });
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'payment.paid',
+      actorRole: 'system',
+      changes: ActivityLogServices.buildActivityChanges(order, result, [
+        'paymentStatus',
+        'orderStatus',
+        'sslcommerzValidationId',
+        'bankTransactionId',
+        'cardType',
+        'paidAt',
+      ]),
+      metadata: {
+        amount: order.totalPrice,
+        transactionId: order.transactionId,
+      },
+      module: 'payments',
+      severity: 'low',
+      source: activityContext?.source ?? 'payment_gateway',
+      status: 'success',
+      summary: `Payment was marked paid for order ${getOrderLogLabel(order)}`,
+      targetId: getOrderLogTargetId(order),
+      targetLabel: getOrderLogLabel(order),
+      targetType: 'order',
+    });
+  }
+
   return {
     order: result,
     validation,
   };
 };
 
-const markOrderPaymentFailed = async (payload: Record<string, unknown>) => {
+const markOrderPaymentFailed = async (
+  payload: Record<string, unknown>,
+  activityContext?: IActivityLogContext,
+) => {
   const transactionId = getPaymentPayloadValue(payload, 'tran_id');
 
   if (!transactionId) {
@@ -1094,19 +1287,45 @@ const markOrderPaymentFailed = async (payload: Record<string, unknown>) => {
     ),
   );
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'payment.failed',
+      actorRole: 'system',
+      changes: ActivityLogServices.buildActivityChanges(order, result, [
+        'orderStatus',
+        'paymentStatus',
+      ]),
+      metadata: {
+        transactionId: order.transactionId,
+      },
+      module: 'payments',
+      severity: 'medium',
+      source: activityContext?.source ?? 'payment_gateway',
+      status: 'failed',
+      summary: `Payment failed for order ${getOrderLogLabel(order)}`,
+      targetId: getOrderLogTargetId(order),
+      targetLabel: getOrderLogLabel(order),
+      targetType: 'order',
+    });
+  }
+
   return result;
 };
 
-const handleSslcommerzIpn = async (payload: Record<string, unknown>) => {
+const handleSslcommerzIpn = async (
+  payload: Record<string, unknown>,
+  activityContext?: IActivityLogContext,
+) => {
   const status = getPaymentPayloadValue(payload, 'status');
 
   if (['VALID', 'VALIDATED'].includes(status)) {
-    return markOrderAsPaid(payload);
+    return markOrderAsPaid(payload, activityContext);
   }
 
   if (['FAILED', 'CANCELLED'].includes(status)) {
     return {
-      order: await markOrderPaymentFailed(payload),
+      order: await markOrderPaymentFailed(payload, activityContext),
       validation: null,
     };
   }
@@ -1114,7 +1333,10 @@ const handleSslcommerzIpn = async (payload: Record<string, unknown>) => {
   throw new AppError(400, 'Unsupported SSLCommerz payment status');
 };
 
-const deleteSingleOrderFromDB = async (id: string) => {
+const deleteSingleOrderFromDB = async (
+  id: string,
+  activityContext?: IActivityLogContext,
+) => {
   const result = await populateOrder(
     Order.findOneAndUpdate(
       { _id: id, isDeleted: false },
@@ -1122,6 +1344,21 @@ const deleteSingleOrderFromDB = async (id: string) => {
       { returnDocument: 'after' },
     ),
   );
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'order.deleted',
+      changes: [{ after: true, before: false, field: 'isDeleted' }],
+      module: 'orders',
+      severity: 'medium',
+      status: 'success',
+      summary: `Order ${getOrderLogLabel(result)} was deleted`,
+      targetId: getOrderLogTargetId(result, id),
+      targetLabel: getOrderLogLabel(result, id),
+      targetType: 'order',
+    });
+  }
 
   return result;
 };

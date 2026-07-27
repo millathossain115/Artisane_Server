@@ -3,6 +3,7 @@ import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
 import { uploadImageToCloudinary } from '../../utils/cloudinary.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { ProductServices } from './product.service.js';
 
 const getUploadedImageUrls = async (req: Request) => {
@@ -17,10 +18,13 @@ const getUploadedImageUrls = async (req: Request) => {
 
 const createProduct = catchAsync(async (req, res) => {
   const images = await getUploadedImageUrls(req);
-  const result = await ProductServices.createProductIntoDB({
-    ...req.body,
-    ...(images ? { images } : {}),
-  });
+  const result = await ProductServices.createProductIntoDB(
+    {
+      ...req.body,
+      ...(images ? { images } : {}),
+    },
+    ActivityLogServices.createActivityContext(req),
+  );
 
   sendResponse(res, {
     statusCode: 201,
@@ -71,10 +75,14 @@ const updateProduct = catchAsync(async (req, res) => {
   }
 
   const images = await getUploadedImageUrls(req);
-  const result = await ProductServices.updateProductIntoDB(id, {
-    ...req.body,
-    ...(images ? { images } : {}),
-  });
+  const result = await ProductServices.updateProductIntoDB(
+    id,
+    {
+      ...req.body,
+      ...(images ? { images } : {}),
+    },
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'Product not found');
@@ -95,7 +103,10 @@ const deleteSingleProduct = catchAsync(async (req, res) => {
     throw new AppError(400, 'Product id is required');
   }
 
-  const result = await ProductServices.deleteSingleProductFromDB(id);
+  const result = await ProductServices.deleteSingleProductFromDB(
+    id,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'Product not found');

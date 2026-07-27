@@ -1,9 +1,14 @@
 import type { Request, Response } from 'express';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { AddressService } from './address.service.js';
 
 export const createAddressHandler = async (req: Request, res: Response) => {
   const userId = req.user.userId;
-  const result = await AddressService.createAddress(userId, req.body);
+  const result = await AddressService.createAddress(
+    userId,
+    req.body,
+    ActivityLogServices.createActivityContext(req),
+  );
   res.status(201).json({
     success: true,
     message: 'Address created successfully',
@@ -24,7 +29,12 @@ export const getMyAddressesHandler = async (req: Request, res: Response) => {
 export const updateAddressHandler = async (req: Request, res: Response) => {
   const userId = req.user.userId;
   const id = String(req.params.id);
-  const result = await AddressService.updateAddress(userId, id, req.body);
+  const result = await AddressService.updateAddress(
+    userId,
+    id,
+    req.body,
+    ActivityLogServices.createActivityContext(req),
+  );
   res.status(200).json({
     success: true,
     message: 'Address updated successfully',
@@ -35,7 +45,11 @@ export const updateAddressHandler = async (req: Request, res: Response) => {
 export const deleteAddressHandler = async (req: Request, res: Response) => {
   const userId = req.user.userId;
   const id = String(req.params.id);
-  const result = await AddressService.deleteAddress(userId, id);
+  const result = await AddressService.deleteAddress(
+    userId,
+    id,
+    ActivityLogServices.createActivityContext(req),
+  );
   res.status(200).json({
     success: true,
     message: 'Address deleted successfully',
@@ -46,7 +60,11 @@ export const deleteAddressHandler = async (req: Request, res: Response) => {
 export const setDefaultAddressHandler = async (req: Request, res: Response) => {
   const userId = req.user.userId;
   const id = String(req.params.id);
-  const result = await AddressService.setDefaultAddress(userId, id);
+  const result = await AddressService.setDefaultAddress(
+    userId,
+    id,
+    ActivityLogServices.createActivityContext(req),
+  );
   res.status(200).json({
     success: true,
     message: 'Default address updated',

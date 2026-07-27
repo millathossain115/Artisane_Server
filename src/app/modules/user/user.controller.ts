@@ -1,11 +1,15 @@
 import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { UserServices } from './user.service.js';
 
 //create user controller
 const createUser = catchAsync(async (req, res) => {
-  const result = await UserServices.createUserIntoDB(req.body);
+  const result = await UserServices.createUserIntoDB(
+    req.body,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   sendResponse(res, {
     statusCode: 201,
@@ -70,7 +74,11 @@ const updateSingleUser = catchAsync(async (req, res) => {
     throw new AppError(400, 'User id is required');
   }
 
-  const result = await UserServices.updateUserIntoDB(id, req.body);
+  const result = await UserServices.updateUserIntoDB(
+    id,
+    req.body,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'User not found');
@@ -92,7 +100,10 @@ const deleteSingleUser = catchAsync(async (req, res) => {
     throw new AppError(400, 'User id is required');
   }
 
-  const result = await UserServices.deleteSingleUserFromDB(id);
+  const result = await UserServices.deleteSingleUserFromDB(
+    id,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'User not found');

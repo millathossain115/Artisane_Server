@@ -5,6 +5,8 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { USER_ROLE, USER_STATUS } from './user.constant.js';
 import type { IUser } from './user.interface.js';
 import { User } from './user.model.js';
@@ -80,7 +82,10 @@ const buildUserSortConditions = (query: Record<string, unknown>) => {
   return { createdAt: direction };
 };
 
-const createUserIntoDB = async (payload: IUser) => {
+const createUserIntoDB = async (
+  payload: IUser,
+  activityContext?: IActivityLogContext,
+) => {
   const existingUser = await User.findOne({ email: payload.email });
 
   if (existingUser) {
@@ -97,6 +102,21 @@ const createUserIntoDB = async (payload: IUser) => {
   }
 
   const result = await User.create(createPayload);
+
+  if (activityContext) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'user.created',
+      module: 'users',
+      severity: 'low',
+      status: 'success',
+      summary: `User ${result.email} was created`,
+      targetId: result._id.toString(),
+      targetLabel: result.email,
+      targetType: 'user',
+    });
+  }
+
   return result;
 };
 
@@ -168,7 +188,17 @@ const getSingleUserFromDB = async (id: string) => {
   return result;
 };
 
-const updateUserIntoDB = async (id: string, payload: Partial<IUser>) => {
+const updateUserIntoDB = async (
+  id: string,
+  payload: Partial<IUser>,
+  activityContext?: IActivityLogContext,
+) => {
+  const existingUser = await User.findOne({ _id: id, isDeleted: false });
+
+  if (!existingUser) {
+    return null;
+  }
+
   if (payload.email) {
     const existingUser = await User.findOne({
       _id: { $ne: id },
@@ -190,15 +220,72 @@ const updateUserIntoDB = async (id: string, payload: Partial<IUser>) => {
     },
   );
 
+  if (result) {
+    const wasBlocked = existingUser.status === USER_STATUS.blocked;
+    const isBlocked = result.status === USER_STATUS.blocked;
+    const statusAction =
+      !wasBlocked && isBlocked
+        ? 'user.blocked'
+        : wasBlocked && !isBlocked
+          ? 'user.unblocked'
+          : 'user.updated';
+
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: statusAction,
+      changes: ActivityLogServices.buildActivityChanges(existingUser, result, [
+        'name',
+        'email',
+        'phone',
+        'address',
+        'city',
+        'postalCode',
+        'avatar',
+        'role',
+        'status',
+      ]),
+      module: 'users',
+      severity: statusAction === 'user.updated' ? 'low' : 'medium',
+      status: 'success',
+      summary:
+        statusAction === 'user.blocked'
+          ? `User ${result.email} was blocked`
+          : statusAction === 'user.unblocked'
+            ? `User ${result.email} was unblocked`
+            : `User ${result.email} was updated`,
+      targetId: result._id.toString(),
+      targetLabel: result.email,
+      targetType: 'user',
+    });
+  }
+
   return result;
 };
 
-const deleteSingleUserFromDB = async (id: string) => {
+const deleteSingleUserFromDB = async (
+  id: string,
+  activityContext?: IActivityLogContext,
+) => {
   const result = await User.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },
     { returnDocument: 'after' },
   );
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'user.deleted',
+      changes: [{ after: true, before: false, field: 'isDeleted' }],
+      module: 'users',
+      severity: 'medium',
+      status: 'success',
+      summary: `User ${result.email} was deleted`,
+      targetId: result._id.toString(),
+      targetLabel: result.email,
+      targetType: 'user',
+    });
+  }
 
   return result;
 };

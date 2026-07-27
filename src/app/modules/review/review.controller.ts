@@ -1,12 +1,14 @@
 import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { ReviewServices } from './review.service.js';
 
 const createReview = catchAsync(async (req, res) => {
   const result = await ReviewServices.createReviewIntoDB(
     req.user.userId,
     req.body,
+    ActivityLogServices.createActivityContext(req),
   );
 
   sendResponse(res, {
@@ -123,6 +125,7 @@ const updateReview = catchAsync(async (req, res) => {
     req.user.userId,
     req.user.role,
     req.body,
+    ActivityLogServices.createActivityContext(req),
   );
 
   if (!result) {
@@ -148,6 +151,7 @@ const updateReviewVisibility = catchAsync(async (req, res) => {
     id,
     req.user.userId,
     req.body,
+    ActivityLogServices.createActivityContext(req),
   );
 
   if (!result) {
@@ -173,6 +177,7 @@ const deleteSingleReview = catchAsync(async (req, res) => {
     id,
     req.user.userId,
     req.user.role,
+    ActivityLogServices.createActivityContext(req),
   );
 
   if (!result) {

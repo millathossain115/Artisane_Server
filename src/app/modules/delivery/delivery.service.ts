@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import config from '../../config/index.js';
 import AppError from '../../errors/appError.js';
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
 import { OrderServices } from '../order/order.service.js';
 
 const getSignatureValue = (signatureHeader?: string | string[]) => {
@@ -38,10 +39,11 @@ const verifySteadfastWebhookSignature = (
 const handleSteadfastWebhook = async (
   payload: Record<string, unknown>,
   signatureHeader?: string | string[],
+  activityContext?: IActivityLogContext,
 ) => {
   verifySteadfastWebhookSignature(payload, signatureHeader);
 
-  return OrderServices.handleSteadfastWebhook(payload);
+  return OrderServices.handleSteadfastWebhook(payload, activityContext);
 };
 
 export const DeliveryServices = {

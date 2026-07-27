@@ -9,6 +9,8 @@ import { USER_STATUS } from '../user/user.constant.js';
 import type { TUserStatus } from '../user/user.interface.js';
 import { User } from '../user/user.model.js';
 import { UserServices } from '../user/user.service.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
 import type {
   IAuthResponse,
   IGoogleAuthPayload,
@@ -225,6 +227,7 @@ const updateMyProfileIntoDB = async (
   userId: string,
   payload: IUpdateMyProfile,
   avatarFile?: Express.Multer.File,
+  activityContext?: IActivityLogContext,
 ) => {
   const user = await User.findById(userId);
 
@@ -253,6 +256,35 @@ const updateMyProfileIntoDB = async (
       runValidators: true,
     },
   );
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'user.profile_updated',
+      actorId: userId,
+      actorRole: activityContext?.actorRole ?? 'user',
+      changes: ActivityLogServices.buildActivityChanges(user, result, [
+        'name',
+        'email',
+        'phone',
+        'alternativePhone',
+        'dateOfBirth',
+        'gender',
+        'address',
+        'city',
+        'postalCode',
+        'avatar',
+      ]),
+      module: 'users',
+      severity: 'low',
+      source: activityContext?.source ?? 'user',
+      status: 'success',
+      summary: `${result.name} updated their profile`,
+      targetId: userId,
+      targetLabel: result.email,
+      targetType: 'user',
+    });
+  }
 
   return result;
 };

@@ -3,6 +3,8 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import type { PipelineStage } from 'mongoose';
 import type { ICategory } from './category.interface.js';
 import { Category } from './category.model.js';
@@ -64,7 +66,10 @@ const buildCategorySortConditions = (
   return { createdAt: direction };
 };
 
-const createCategoryIntoDB = async (payload: ICategory) => {
+const createCategoryIntoDB = async (
+  payload: ICategory,
+  activityContext?: IActivityLogContext,
+) => {
   const existingCategory = await Category.findOne({
     $or: [{ name: payload.name }, { slug: payload.slug }],
   });
@@ -74,6 +79,17 @@ const createCategoryIntoDB = async (payload: ICategory) => {
   }
 
   const result = await Category.create(payload);
+  await ActivityLogServices.recordActivity({
+    ...activityContext,
+    action: 'category.created',
+    module: 'categories',
+    severity: 'low',
+    status: 'success',
+    summary: `Category ${result.name} was created`,
+    targetId: result._id.toString(),
+    targetLabel: result.name,
+    targetType: 'category',
+  });
   return result;
 };
 
@@ -150,7 +166,14 @@ const getSingleCategoryFromDB = async (id: string) => {
 const updateCategoryIntoDB = async (
   id: string,
   payload: Partial<ICategory>,
+  activityContext?: IActivityLogContext,
 ) => {
+  const existingCategory = await Category.findOne({ _id: id, isDeleted: false });
+
+  if (!existingCategory) {
+    return null;
+  }
+
   if (payload.name || payload.slug) {
     const duplicateConditions: Array<{ name?: string; slug?: string }> = [];
 
@@ -178,15 +201,53 @@ const updateCategoryIntoDB = async (
     { returnDocument: 'after', runValidators: true },
   );
 
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'category.updated',
+      changes: ActivityLogServices.buildActivityChanges(existingCategory, result, [
+        'name',
+        'slug',
+        'description',
+        'image',
+      ]),
+      module: 'categories',
+      severity: 'low',
+      status: 'success',
+      summary: `Category ${result.name} was updated`,
+      targetId: result._id.toString(),
+      targetLabel: result.name,
+      targetType: 'category',
+    });
+  }
+
   return result;
 };
 
-const deleteSingleCategoryFromDB = async (id: string) => {
+const deleteSingleCategoryFromDB = async (
+  id: string,
+  activityContext?: IActivityLogContext,
+) => {
   const result = await Category.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },
     { returnDocument: 'after' },
   );
+
+  if (result) {
+    await ActivityLogServices.recordActivity({
+      ...activityContext,
+      action: 'category.deleted',
+      changes: [{ after: true, before: false, field: 'isDeleted' }],
+      module: 'categories',
+      severity: 'medium',
+      status: 'success',
+      summary: `Category ${result.name} was deleted`,
+      targetId: result._id.toString(),
+      targetLabel: result.name,
+      targetType: 'category',
+    });
+  }
 
   return result;
 };

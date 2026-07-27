@@ -1,12 +1,14 @@
 import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { WishlistServices } from './wishlist.service.js';
 
 const createWishlist = catchAsync(async (req, res) => {
   const result = await WishlistServices.createWishlistIntoDB(
     req.user.userId,
     req.body,
+    ActivityLogServices.createActivityContext(req),
   );
 
   sendResponse(res, {
@@ -58,6 +60,7 @@ const deleteWishlist = catchAsync(async (req, res) => {
     id,
     req.user.userId,
     req.user.role,
+    ActivityLogServices.createActivityContext(req),
   );
 
   if (!result) {
@@ -82,6 +85,7 @@ const deleteWishlistByProduct = catchAsync(async (req, res) => {
   const result = await WishlistServices.deleteWishlistByProductFromDB(
     productId,
     req.user.userId,
+    ActivityLogServices.createActivityContext(req),
   );
 
   if (!result) {
@@ -97,7 +101,10 @@ const deleteWishlistByProduct = catchAsync(async (req, res) => {
 });
 
 const clearMyWishlist = catchAsync(async (req, res) => {
-  const result = await WishlistServices.clearMyWishlistFromDB(req.user.userId);
+  const result = await WishlistServices.clearMyWishlistFromDB(
+    req.user.userId,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   sendResponse(res, {
     statusCode: 200,

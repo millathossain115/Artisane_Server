@@ -3,6 +3,7 @@ import AppError from '../../errors/appError.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
 import { uploadImageToCloudinary } from '../../utils/cloudinary.js';
+import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { CategoryServices } from './category.service.js';
 
 const getUploadedImageUrl = async (req: Request) => {
@@ -16,10 +17,13 @@ const getUploadedImageUrl = async (req: Request) => {
 const createCategory = catchAsync(async (req, res) => {
   console.log('Category.create req.body: ', req.body);
   const image = await getUploadedImageUrl(req);
-  const result = await CategoryServices.createCategoryIntoDB({
-    ...req.body,
-    ...(image ? { image } : {}),
-  });
+  const result = await CategoryServices.createCategoryIntoDB(
+    {
+      ...req.body,
+      ...(image ? { image } : {}),
+    },
+    ActivityLogServices.createActivityContext(req),
+  );
 
   sendResponse(res, {
     statusCode: 201,
@@ -71,10 +75,14 @@ const updateCategory = catchAsync(async (req, res) => {
   }
 
   const image = await getUploadedImageUrl(req);
-  const result = await CategoryServices.updateCategoryIntoDB(id, {
-    ...req.body,
-    ...(image ? { image } : {}),
-  });
+  const result = await CategoryServices.updateCategoryIntoDB(
+    id,
+    {
+      ...req.body,
+      ...(image ? { image } : {}),
+    },
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'Category not found');
@@ -95,7 +103,10 @@ const deleteSingleCategory = catchAsync(async (req, res) => {
     throw new AppError(400, 'Category id is required');
   }
 
-  const result = await CategoryServices.deleteSingleCategoryFromDB(id);
+  const result = await CategoryServices.deleteSingleCategoryFromDB(
+    id,
+    ActivityLogServices.createActivityContext(req),
+  );
 
   if (!result) {
     throw new AppError(404, 'Category not found');
