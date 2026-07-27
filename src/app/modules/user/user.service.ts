@@ -82,6 +82,30 @@ const buildUserSortConditions = (query: Record<string, unknown>) => {
   return { createdAt: direction };
 };
 
+const activeSuperAdminMatch = {
+  isDeleted: false,
+  role: USER_ROLE.super_admin,
+  status: USER_STATUS.active,
+};
+
+const assertCanRemoveActiveSuperAdmin = async (user: IUser) => {
+  if (
+    user.role !== USER_ROLE.super_admin ||
+    user.status !== USER_STATUS.active ||
+    user.isDeleted
+  ) {
+    return;
+  }
+
+  const activeSuperAdminCount = await User.countDocuments(
+    activeSuperAdminMatch,
+  );
+
+  if (activeSuperAdminCount <= 1) {
+    throw new AppError(400, 'At least one active super admin is required');
+  }
+};
+
 const createUserIntoDB = async (
   payload: IUser,
   activityContext?: IActivityLogContext,
@@ -150,7 +174,7 @@ const getUserStatsFromDB = async (query: Record<string, unknown>) => {
     User.countDocuments(matchConditions),
     User.countDocuments({
       ...matchConditions,
-      role: USER_ROLE.admin,
+      role: { $in: [USER_ROLE.admin, USER_ROLE.super_admin] },
     }),
     User.countDocuments({
       ...matchConditions,
@@ -197,6 +221,21 @@ const updateUserIntoDB = async (
 
   if (!existingUser) {
     return null;
+  }
+
+  const nextRole = payload.role ?? existingUser.role;
+  const nextStatus = payload.status ?? existingUser.status;
+  const nextIsDeleted = payload.isDeleted ?? existingUser.isDeleted;
+
+  if (
+    existingUser.role === USER_ROLE.super_admin &&
+    existingUser.status === USER_STATUS.active &&
+    existingUser.isDeleted === false &&
+    (nextRole !== USER_ROLE.super_admin ||
+      nextStatus !== USER_STATUS.active ||
+      nextIsDeleted === true)
+  ) {
+    await assertCanRemoveActiveSuperAdmin(existingUser);
   }
 
   if (payload.email) {
@@ -266,6 +305,14 @@ const deleteSingleUserFromDB = async (
   id: string,
   activityContext?: IActivityLogContext,
 ) => {
+  const existingUser = await User.findOne({ _id: id, isDeleted: false });
+
+  if (!existingUser) {
+    return null;
+  }
+
+  await assertCanRemoveActiveSuperAdmin(existingUser);
+
   const result = await User.findOneAndUpdate(
     { _id: id, isDeleted: false },
     { isDeleted: true },

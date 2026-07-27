@@ -1,4 +1,3 @@
-import { USER_ROLE } from '../user/user.constant.js';
 import { z } from 'zod';
 
 const genderValidationSchema = z.enum([
@@ -8,14 +7,17 @@ const genderValidationSchema = z.enum([
   'prefer_not_to_say',
 ]);
 
-const dateOfBirthValidationSchema = z.preprocess((value) => {
-  if (typeof value !== 'string' || !value.trim()) {
-    return undefined;
-  }
+const dateOfBirthValidationSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== 'string' || !value.trim()) {
+      return undefined;
+    }
 
-  const parsedDate = new Date(value);
-  return Number.isNaN(parsedDate.getTime()) ? value : parsedDate;
-}, z.date({ message: 'Date of birth must be a valid date' }).optional());
+    const parsedDate = new Date(value);
+    return Number.isNaN(parsedDate.getTime()) ? value : parsedDate;
+  },
+  z.date({ message: 'Date of birth must be a valid date' }).optional(),
+);
 
 const registerUserValidationSchema = z.object({
   name: z
@@ -38,7 +40,6 @@ const registerUserValidationSchema = z.object({
     .min(7, { message: 'Phone number must be at least 7 characters' })
     .max(20, { message: 'Phone number cannot exceed 20 characters' })
     .optional(),
-  role: z.enum(Object.keys(USER_ROLE) as [string, ...string[]]).optional(),
 });
 
 const loginUserValidationSchema = z.object({

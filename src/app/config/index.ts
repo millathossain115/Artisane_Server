@@ -13,6 +13,13 @@ export default {
   jwt_access_expires_in: process.env.JWT_ACCESS_EXPIRES_IN,
   jwt_refresh_expires_in: process.env.JWT_REFRESH_EXPIRES_IN,
   frontend_url: process.env.FRONTEND_URL || 'http://localhost:5173',
+  super_admin: {
+    email: process.env.SUPER_ADMIN_EMAIL,
+    name: process.env.SUPER_ADMIN_NAME || 'Super Admin',
+    password: process.env.SUPER_ADMIN_PASSWORD,
+    phone: process.env.SUPER_ADMIN_PHONE,
+    reset_password: process.env.SUPER_ADMIN_RESET_PASSWORD === 'true',
+  },
   google: {
     client_id: process.env.GOOGLE_CLIENT_ID,
   },

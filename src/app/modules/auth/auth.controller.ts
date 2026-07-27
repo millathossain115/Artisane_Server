@@ -1,7 +1,12 @@
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
+import type { TActivityActorRole } from '../activityLog/activityLog.interface.js';
 import { AuthServices } from './auth.service.js';
+
+const getActorRole = (role?: string): TActivityActorRole => {
+  return role === 'admin' || role === 'super_admin' ? role : 'user';
+};
 
 const registerUser = catchAsync(async (req, res) => {
   //console.log('Auth.controller req.body: ', req.body);
@@ -12,7 +17,7 @@ const registerUser = catchAsync(async (req, res) => {
     actorEmail: result.user.email,
     actorId: result.user._id,
     actorName: result.user.name,
-    actorRole: result.user.role === 'admin' ? 'admin' : 'user',
+    actorRole: getActorRole(result.user.role),
     module: 'auth',
     severity: 'low',
     status: 'success',
@@ -41,7 +46,7 @@ const loginUser = catchAsync(async (req, res) => {
       actorEmail: result.user.email,
       actorId: result.user._id,
       actorName: result.user.name,
-      actorRole: result.user.role === 'admin' ? 'admin' : 'user',
+      actorRole: getActorRole(result.user.role),
       module: 'auth',
       severity: 'low',
       status: 'success',
@@ -87,7 +92,7 @@ const googleLogin = catchAsync(async (req, res) => {
       actorEmail: result.user.email,
       actorId: result.user._id,
       actorName: result.user.name,
-      actorRole: result.user.role === 'admin' ? 'admin' : 'user',
+      actorRole: getActorRole(result.user.role),
       module: 'auth',
       severity: 'low',
       status: 'success',

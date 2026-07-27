@@ -4,10 +4,14 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
-import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import type {
+  IActivityLogContext,
+  TActivityActorRole,
+} from '../activityLog/activityLog.interface.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import '../category/category.model.js';
 import { Product } from '../product/product.model.js';
+import { isAdminRole } from '../user/user.constant.js';
 import { User } from '../user/user.model.js';
 import type {
   ICreateWishlistPayload,
@@ -24,6 +28,14 @@ const populateWishlist = <T>(query: Query<T, IWishlist>) =>
       select: 'name slug',
     },
   });
+
+const getActivityActorRole = (role: string): TActivityActorRole => {
+  if (role === 'super_admin') {
+    return 'super_admin';
+  }
+
+  return role === 'admin' ? 'admin' : 'user';
+};
 
 const createWishlistIntoDB = async (
   userId: string,
@@ -153,7 +165,7 @@ const deleteWishlistFromDB = async (
     return null;
   }
 
-  if (userRole !== 'admin' && wishlist.user.toString() !== userId) {
+  if (!isAdminRole(userRole) && wishlist.user.toString() !== userId) {
     throw new AppError(403, 'You are not allowed to delete this wishlist item');
   }
 
@@ -170,11 +182,12 @@ const deleteWishlistFromDB = async (
       ...activityContext,
       action: 'wishlist.removed',
       actorId: userId,
-      actorRole: userRole === 'admin' ? 'admin' : 'user',
+      actorRole: getActivityActorRole(userRole),
       changes: [{ after: true, before: false, field: 'isDeleted' }],
       module: 'wishlist',
       severity: 'low',
-      source: activityContext?.source ?? (userRole === 'admin' ? 'admin' : 'user'),
+      source:
+        activityContext?.source ?? (isAdminRole(userRole) ? 'admin' : 'user'),
       status: 'success',
       summary: `Wishlist item ${id} was removed`,
       targetId: id,

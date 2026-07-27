@@ -17,7 +17,7 @@ const activityLogSchema = new Schema<IActivityLog>(
     actorName: { type: String, trim: true },
     actorRole: {
       type: String,
-      enum: ['admin', 'system', 'user'],
+      enum: ['admin', 'super_admin', 'system', 'user'],
       default: 'system',
       index: true,
     },
@@ -89,7 +89,11 @@ const activityLogSchema = new Schema<IActivityLog>(
 activityLogSchema.index({ createdAt: -1 });
 activityLogSchema.index({ module: 1, createdAt: -1 });
 activityLogSchema.index({ targetType: 1, targetId: 1 });
-activityLogSchema.index({ summary: 'text', targetLabel: 'text', actorEmail: 'text' });
+activityLogSchema.index({
+  summary: 'text',
+  targetLabel: 'text',
+  actorEmail: 'text',
+});
 
 export const ActivityLog = model<IActivityLog>(
   'ActivityLog',

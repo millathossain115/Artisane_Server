@@ -1,4 +1,4 @@
-export type TActivityActorRole = 'admin' | 'system' | 'user';
+export type TActivityActorRole = 'admin' | 'super_admin' | 'system' | 'user';
 
 export type TActivitySource =
   | 'admin'
@@ -68,7 +68,13 @@ export interface IActivityLogContext {
 
 export type TRecordActivityPayload = Omit<
   IActivityLog,
-  'actorRole' | 'browser' | 'deviceType' | 'ipAddress' | 'os' | 'source' | 'userAgent'
+  | 'actorRole'
+  | 'browser'
+  | 'deviceType'
+  | 'ipAddress'
+  | 'os'
+  | 'source'
+  | 'userAgent'
 > & {
   actorEmail?: string | undefined;
   actorId?: string | undefined;

@@ -9,8 +9,12 @@ import { createPaymentLog } from '../paymentLog/paymentLog.service.js';
 import { Product } from '../product/product.model.js';
 import { PromoBanner } from '../promo/promo.model.js';
 import { ShippingServices } from '../shipping/shipping.service.js';
-import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import type {
+  IActivityLogContext,
+  TActivityActorRole,
+} from '../activityLog/activityLog.interface.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
+import { isAdminRole } from '../user/user.constant.js';
 import { User } from '../user/user.model.js';
 import {
   CANCELLABLE_ORDER_STATUSES,
@@ -37,6 +41,14 @@ type TSslcommerzSessionResponse = {
     gw?: string;
     redirectGatewayURL?: string;
   }[];
+};
+
+const getActivityActorRole = (role: string): TActivityActorRole => {
+  if (role === 'super_admin') {
+    return 'super_admin';
+  }
+
+  return role === 'admin' ? 'admin' : 'user';
 };
 
 type TSslcommerzValidationResponse = {
@@ -929,7 +941,7 @@ const cancelOrderIntoDB = async (
     return null;
   }
 
-  if (userRole !== 'admin' && order.user.toString() !== userId) {
+  if (!isAdminRole(userRole) && order.user.toString() !== userId) {
     throw new AppError(403, 'You are not allowed to cancel this order');
   }
 
@@ -982,14 +994,15 @@ const cancelOrderIntoDB = async (
       ...activityContext,
       action: 'order.cancelled',
       actorId: userId,
-      actorRole: userRole === 'admin' ? 'admin' : 'user',
+      actorRole: getActivityActorRole(userRole),
       changes: ActivityLogServices.buildActivityChanges(order, result, [
         'orderStatus',
         'paymentStatus',
       ]),
       module: 'orders',
       severity: 'medium',
-      source: activityContext?.source ?? (userRole === 'admin' ? 'admin' : 'user'),
+      source:
+        activityContext?.source ?? (isAdminRole(userRole) ? 'admin' : 'user'),
       status: 'success',
       summary: `Order ${getOrderLogLabel(result)} was cancelled`,
       targetId: getOrderLogTargetId(result, id),

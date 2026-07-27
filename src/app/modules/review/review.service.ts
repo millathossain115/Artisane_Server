@@ -3,11 +3,15 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
-import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
+import type {
+  IActivityLogContext,
+  TActivityActorRole,
+} from '../activityLog/activityLog.interface.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import { ORDER_STATUS, PAYMENT_STATUS } from '../order/order.constant.js';
 import { Order } from '../order/order.model.js';
 import { Product } from '../product/product.model.js';
+import { isAdminRole } from '../user/user.constant.js';
 import { User } from '../user/user.model.js';
 import type {
   ICreateReviewPayload,
@@ -28,6 +32,14 @@ const reviewPopulate = [
   },
   { path: 'hiddenBy', select: 'name email role' },
 ] as const;
+
+const getActivityActorRole = (role: string): TActivityActorRole => {
+  if (role === 'super_admin') {
+    return 'super_admin';
+  }
+
+  return role === 'admin' ? 'admin' : 'user';
+};
 
 const publicReviewFilter = {
   isDeleted: false,
@@ -275,7 +287,7 @@ const updateReviewIntoDB = async (
     throw new AppError(404, 'Review not found');
   }
 
-  if (userRole !== 'admin' && review.user.toString() !== userId) {
+  if (!isAdminRole(userRole) && review.user.toString() !== userId) {
     throw new AppError(403, 'You are not allowed to update this review');
   }
 
@@ -292,14 +304,15 @@ const updateReviewIntoDB = async (
       ...activityContext,
       action: 'review.updated',
       actorId: userId,
-      actorRole: userRole === 'admin' ? 'admin' : 'user',
+      actorRole: getActivityActorRole(userRole),
       changes: ActivityLogServices.buildActivityChanges(review, result, [
         'rating',
         'comment',
       ]),
       module: 'reviews',
       severity: 'low',
-      source: activityContext?.source ?? (userRole === 'admin' ? 'admin' : 'user'),
+      source:
+        activityContext?.source ?? (isAdminRole(userRole) ? 'admin' : 'user'),
       status: 'success',
       summary: `Review ${result._id.toString()} was updated`,
       targetId: result._id.toString(),
@@ -323,7 +336,7 @@ const deleteSingleReviewFromDB = async (
     throw new AppError(404, 'Review not found');
   }
 
-  if (userRole !== 'admin' && review.user.toString() !== userId) {
+  if (!isAdminRole(userRole) && review.user.toString() !== userId) {
     throw new AppError(403, 'You are not allowed to delete this review');
   }
 
@@ -340,11 +353,12 @@ const deleteSingleReviewFromDB = async (
       ...activityContext,
       action: 'review.deleted',
       actorId: userId,
-      actorRole: userRole === 'admin' ? 'admin' : 'user',
+      actorRole: getActivityActorRole(userRole),
       changes: [{ after: true, before: false, field: 'isDeleted' }],
       module: 'reviews',
-      severity: userRole === 'admin' ? 'medium' : 'low',
-      source: activityContext?.source ?? (userRole === 'admin' ? 'admin' : 'user'),
+      severity: isAdminRole(userRole) ? 'medium' : 'low',
+      source:
+        activityContext?.source ?? (isAdminRole(userRole) ? 'admin' : 'user'),
       status: 'success',
       summary: `Review ${result._id.toString()} was deleted`,
       targetId: result._id.toString(),

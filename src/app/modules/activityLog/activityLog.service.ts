@@ -3,6 +3,7 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import { isAdminRole, USER_ROLE } from '../user/user.constant.js';
 import { User } from '../user/user.model.js';
 import { ActivityLog } from './activityLog.model.js';
 import type {
@@ -57,6 +58,7 @@ const ALLOWED_SEVERITIES = new Set<TActivitySeverity>([
 
 const ALLOWED_ACTOR_ROLES = new Set<TActivityActorRole>([
   'admin',
+  'super_admin',
   'system',
   'user',
 ]);
@@ -85,8 +87,7 @@ export const createActivityContext = (
 ): IActivityLogContext => {
   const user = getRequestUser(req);
   const userAgent = req.headers['user-agent'];
-  const actorRole =
-    user?.role === 'admin' ? 'admin' : user?.role ? 'user' : undefined;
+  const actorRole = user?.role;
 
   return {
     ...(user?.email ? { actorEmail: user.email } : {}),
@@ -94,7 +95,8 @@ export const createActivityContext = (
     ...(actorRole ? { actorRole } : {}),
     ...(getForwardedIp(req) ? { ipAddress: getForwardedIp(req) } : {}),
     source:
-      source ?? (user?.role === 'admin' ? 'admin' : user?.role ? 'user' : 'system'),
+      source ??
+      (isAdminRole(user?.role) ? 'admin' : user?.role ? 'user' : 'system'),
     ...(typeof userAgent === 'string' ? { userAgent } : {}),
   };
 };
@@ -196,8 +198,12 @@ export const buildActivityChanges = (
   const afterRecord = normalizeDocument(after);
 
   return fields.reduce<IActivityChange[]>((changes, field) => {
-    const beforeValue = sanitizeActivityValue(getComparableValue(beforeRecord[field]));
-    const afterValue = sanitizeActivityValue(getComparableValue(afterRecord[field]));
+    const beforeValue = sanitizeActivityValue(
+      getComparableValue(beforeRecord[field]),
+    );
+    const afterValue = sanitizeActivityValue(
+      getComparableValue(afterRecord[field]),
+    );
 
     if (JSON.stringify(beforeValue) !== JSON.stringify(afterValue)) {
       changes.push({
@@ -285,14 +291,17 @@ const buildActivityLogFilter = (query: Record<string, unknown>) => {
 
   const dateFrom =
     typeof query.dateFrom === 'string' ? new Date(query.dateFrom) : null;
-  const dateTo = typeof query.dateTo === 'string' ? new Date(query.dateTo) : null;
+  const dateTo =
+    typeof query.dateTo === 'string' ? new Date(query.dateTo) : null;
 
   if (
     (dateFrom && !Number.isNaN(dateFrom.getTime())) ||
     (dateTo && !Number.isNaN(dateTo.getTime()))
   ) {
     filter.createdAt = {
-      ...(dateFrom && !Number.isNaN(dateFrom.getTime()) ? { $gte: dateFrom } : {}),
+      ...(dateFrom && !Number.isNaN(dateFrom.getTime())
+        ? { $gte: dateFrom }
+        : {}),
       ...(dateTo && !Number.isNaN(dateTo.getTime()) ? { $lte: dateTo } : {}),
     };
   }
@@ -356,7 +365,9 @@ const getActivityLogStatsFromDB = async () => {
     ActivityLog.countDocuments({ createdAt: { $gte: today } }),
     ActivityLog.countDocuments({ status: 'failed' }),
     ActivityLog.countDocuments({ status: 'warning' }),
-    ActivityLog.countDocuments({ actorRole: 'admin' }),
+    ActivityLog.countDocuments({
+      actorRole: { $in: [USER_ROLE.admin, USER_ROLE.super_admin] },
+    }),
     ActivityLog.countDocuments({ actorRole: 'user' }),
     ActivityLog.countDocuments({ actorRole: 'system' }),
     ActivityLog.aggregate([

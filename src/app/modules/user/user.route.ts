@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.post(
   '/create-user',
-  auth(USER_ROLE.admin),
+  auth(USER_ROLE.super_admin),
   validateRequest(UserValidations.createUserValidationSchema),
   UserControllers.createUser,
 );
@@ -18,10 +18,14 @@ router.get('/stats', auth(USER_ROLE.admin), UserControllers.getUserStats);
 router.get('/:id', auth(USER_ROLE.admin), UserControllers.getSingleUser);
 router.patch(
   '/:id',
-  auth(USER_ROLE.admin),
+  auth(USER_ROLE.super_admin),
   validateRequest(UserValidations.updateUserValidationSchema),
   UserControllers.updateSingleUser,
 );
-router.delete('/:id', auth(USER_ROLE.admin), UserControllers.deleteSingleUser);
+router.delete(
+  '/:id',
+  auth(USER_ROLE.super_admin),
+  UserControllers.deleteSingleUser,
+);
 
 export const UserRoutes = router;

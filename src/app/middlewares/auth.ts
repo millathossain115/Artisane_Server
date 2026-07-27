@@ -5,7 +5,11 @@ import AppError from '../errors/appError.js';
 import catchAsync from '../utils/catchAsync.js';
 import type { IJwtPayload } from '../modules/auth/auth.interface.js';
 import { User } from '../modules/user/user.model.js';
-import { USER_STATUS } from '../modules/user/user.constant.js';
+import {
+  isAdminRole,
+  USER_ROLE,
+  USER_STATUS,
+} from '../modules/user/user.constant.js';
 import type { TUserRole } from '../modules/user/user.interface.js';
 
 const auth = (...requiredRoles: TUserRole[]) => {
@@ -39,14 +43,23 @@ const auth = (...requiredRoles: TUserRole[]) => {
       throw new AppError(401, 'You are not authorized!');
     }
 
-    if (requiredRoles.length && !requiredRoles.includes(user.role || 'user')) {
+    const userRole = user.role || USER_ROLE.user;
+    const hasRequiredRole = requiredRoles.some((role) => {
+      if (role === USER_ROLE.admin) {
+        return isAdminRole(userRole);
+      }
+
+      return role === userRole;
+    });
+
+    if (requiredRoles.length && !hasRequiredRole) {
       throw new AppError(401, 'You are not authorized!');
     }
 
     req.user = {
       ...decoded,
       email: user.email,
-      role: user.role || 'user',
+      role: userRole,
     };
     next();
   });

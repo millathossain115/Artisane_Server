@@ -1,28 +1,44 @@
 import { Types } from 'mongoose';
 import { ActivityLog } from '../activityLog/activityLog.model.js';
-import { Category } from '../category/category.model.js';
-import { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS } from '../order/order.constant.js';
+import {
+  ORDER_STATUS,
+  PAYMENT_METHOD,
+  PAYMENT_STATUS,
+} from '../order/order.constant.js';
 import { Order } from '../order/order.model.js';
 import { PaymentLog } from '../paymentLog/paymentLog.model.js';
 import { Product } from '../product/product.model.js';
 import { Review } from '../review/review.model.js';
 import { User } from '../user/user.model.js';
-import type { IAdminAnalytics, IAdminAnalyticsFilters } from './analytics.interface.js';
+import type {
+  IAdminAnalytics,
+  IAdminAnalyticsFilters,
+} from './analytics.interface.js';
 
 const VALID_ORDER_STATUSES = new Set(Object.keys(ORDER_STATUS));
 const VALID_PAYMENT_STATUSES = new Set(Object.keys(PAYMENT_STATUS));
 const VALID_PAYMENT_METHODS = new Set(Object.keys(PAYMENT_METHOD));
 const VALID_COURIER_PROVIDERS = new Set(['steadfast']);
 
-const parseFilters = (query: Record<string, unknown>): IAdminAnalyticsFilters => {
+const parseFilters = (
+  query: Record<string, unknown>,
+): IAdminAnalyticsFilters => {
   const filters: IAdminAnalyticsFilters = {};
-  const dateFrom = typeof query.dateFrom === 'string' ? query.dateFrom.trim() : '';
+  const dateFrom =
+    typeof query.dateFrom === 'string' ? query.dateFrom.trim() : '';
   const dateTo = typeof query.dateTo === 'string' ? query.dateTo.trim() : '';
-  const category = typeof query.category === 'string' ? query.category.trim() : '';
-  const orderStatus = typeof query.orderStatus === 'string' ? query.orderStatus.trim() : '';
-  const paymentStatus = typeof query.paymentStatus === 'string' ? query.paymentStatus.trim() : '';
-  const paymentMethod = typeof query.paymentMethod === 'string' ? query.paymentMethod.trim() : '';
-  const courierProvider = typeof query.courierProvider === 'string' ? query.courierProvider.trim() : '';
+  const category =
+    typeof query.category === 'string' ? query.category.trim() : '';
+  const orderStatus =
+    typeof query.orderStatus === 'string' ? query.orderStatus.trim() : '';
+  const paymentStatus =
+    typeof query.paymentStatus === 'string' ? query.paymentStatus.trim() : '';
+  const paymentMethod =
+    typeof query.paymentMethod === 'string' ? query.paymentMethod.trim() : '';
+  const courierProvider =
+    typeof query.courierProvider === 'string'
+      ? query.courierProvider.trim()
+      : '';
 
   if (dateFrom) filters.dateFrom = dateFrom;
   if (dateTo) filters.dateTo = dateTo;
@@ -191,7 +207,11 @@ const getAdminAnalyticsFromDB = async (
           orders: { $sum: 1 },
           paidRevenue: {
             $sum: {
-              $cond: [{ $eq: ['$paymentStatus', PAYMENT_STATUS.paid] }, '$totalPrice', 0],
+              $cond: [
+                { $eq: ['$paymentStatus', PAYMENT_STATUS.paid] },
+                '$totalPrice',
+                0,
+              ],
             },
           },
           revenue: { $sum: '$totalPrice' },
@@ -244,7 +264,14 @@ const getAdminAnalyticsFromDB = async (
       },
       { $sort: { soldQuantity: -1, revenue: -1 } },
       { $limit: 8 },
-      { $project: { _id: 0, name: { $ifNull: ['$_id', 'Uncategorized'] }, revenue: 1, soldQuantity: 1 } },
+      {
+        $project: {
+          _id: 0,
+          name: { $ifNull: ['$_id', 'Uncategorized'] },
+          revenue: 1,
+          soldQuantity: 1,
+        },
+      },
     ]),
     Product.find({ isDeleted: false, stock: { $gt: 0, $lte: 5 } })
       .sort({ stock: 1, createdAt: -1 })
@@ -302,7 +329,13 @@ const getAdminAnalyticsFromDB = async (
     ]),
     Order.aggregate([
       { $match: orderMatch },
-      { $group: { _id: '$user', orders: { $sum: 1 }, spend: { $sum: '$totalPrice' } } },
+      {
+        $group: {
+          _id: '$user',
+          orders: { $sum: 1 },
+          spend: { $sum: '$totalPrice' },
+        },
+      },
       {
         $lookup: {
           as: 'user',
@@ -349,25 +382,49 @@ const getAdminAnalyticsFromDB = async (
       .limit(5)
       .populate('user', 'name email')
       .populate('product', 'name'),
-    Review.countDocuments({ ...createdAtMatch, isDeleted: false, isHidden: true }),
+    Review.countDocuments({
+      ...createdAtMatch,
+      isDeleted: false,
+      isHidden: true,
+    }),
     Order.aggregate([
       { $match: { ...orderMatch, courierStatus: { $exists: true, $ne: '' } } },
       { $group: { _id: '$courierStatus', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
-    Order.countDocuments({ ...orderMatch, shipmentCreatedAt: { $exists: true } }),
+    Order.countDocuments({
+      ...orderMatch,
+      shipmentCreatedAt: { $exists: true },
+    }),
     Order.countDocuments({ ...orderMatch, orderStatus: ORDER_STATUS.shipped }),
-    Order.countDocuments({ ...orderMatch, orderStatus: ORDER_STATUS.delivered }),
+    Order.countDocuments({
+      ...orderMatch,
+      orderStatus: ORDER_STATUS.delivered,
+    }),
     ActivityLog.countDocuments({
       ...createdAtMatch,
       module: 'shipping',
       status: { $in: ['warning', 'failed'] },
     }),
-    ActivityLog.countDocuments({ ...createdAtMatch, actorRole: 'admin' }),
-    ActivityLog.countDocuments({ ...createdAtMatch, action: 'user.login_failed' }),
-    ActivityLog.countDocuments({ ...createdAtMatch, status: { $in: ['warning', 'failed'] } }),
+    ActivityLog.countDocuments({
+      ...createdAtMatch,
+      actorRole: { $in: ['admin', 'super_admin'] },
+    }),
+    ActivityLog.countDocuments({
+      ...createdAtMatch,
+      action: 'user.login_failed',
+    }),
+    ActivityLog.countDocuments({
+      ...createdAtMatch,
+      status: { $in: ['warning', 'failed'] },
+    }),
     ActivityLog.aggregate([
-      { $match: { ...createdAtMatch, actorRole: 'admin' } },
+      {
+        $match: {
+          ...createdAtMatch,
+          actorRole: { $in: ['admin', 'super_admin'] },
+        },
+      },
       {
         $group: {
           _id: { email: '$actorEmail', name: '$actorName' },
@@ -376,10 +433,14 @@ const getAdminAnalyticsFromDB = async (
       },
       { $sort: { count: -1 } },
       { $limit: 5 },
-      { $project: { _id: 0, count: 1, email: '$_id.email', name: '$_id.name' } },
+      {
+        $project: { _id: 0, count: 1, email: '$_id.email', name: '$_id.name' },
+      },
     ]),
     PaymentLog.aggregate([
-      { $match: { ...createdAtMatch, status: { $in: ['Failed', 'Refunded'] } } },
+      {
+        $match: { ...createdAtMatch, status: { $in: ['Failed', 'Refunded'] } },
+      },
       {
         $group: {
           _id: { $dateToString: { date: '$createdAt', format: '%Y-%m-%d' } },
@@ -394,11 +455,14 @@ const getAdminAnalyticsFromDB = async (
   const totalRevenue = revenueAgg[0]?.value || 0;
   const paidRevenue = paidRevenueAgg[0]?.value || 0;
   const failedOrRefundedPayments = toNamedCounts(paymentStatusRows).reduce(
-    (sum, row) => (['failed', 'refunded'].includes(row.label) ? sum + row.count : sum),
+    (sum, row) =>
+      ['failed', 'refunded'].includes(row.label) ? sum + row.count : sum,
     0,
   );
   const cancelledCount =
-    toNamedCounts(orderStatusRows).find((row) => row.label === ORDER_STATUS.cancelled)?.count || 0;
+    toNamedCounts(orderStatusRows).find(
+      (row) => row.label === ORDER_STATUS.cancelled,
+    )?.count || 0;
 
   return {
     activity: {
@@ -418,15 +482,21 @@ const getAdminAnalyticsFromDB = async (
     },
     customers: {
       highestSpend: customerRows,
-      mostOrders: [...customerRows].sort((a, b) => b.orders - a.orders).slice(0, 8),
+      mostOrders: [...customerRows]
+        .sort((a, b) => b.orders - a.orders)
+        .slice(0, 8),
       newCustomers,
       repeatCustomers: repeatCustomerAgg[0]?.count || 0,
       totalActiveCustomers,
       trend: toNamedCounts(customerTrend),
     },
     kpis: {
-      averageOrderValue: totalOrders ? Math.round(totalRevenue / totalOrders) : 0,
-      conversionProxy: totalOrders ? Math.round((paidOrders / totalOrders) * 100) : 0,
+      averageOrderValue: totalOrders
+        ? Math.round(totalRevenue / totalOrders)
+        : 0,
+      conversionProxy: totalOrders
+        ? Math.round((paidOrders / totalOrders) * 100)
+        : 0,
       failedOrRefundedPayments,
       newCustomers,
       paidRevenue,
@@ -435,7 +505,9 @@ const getAdminAnalyticsFromDB = async (
       totalRevenue,
     },
     orders: {
-      cancellationRate: totalOrders ? Math.round((cancelledCount / totalOrders) * 100) : 0,
+      cancellationRate: totalOrders
+        ? Math.round((cancelledCount / totalOrders) * 100)
+        : 0,
       fulfillmentBacklog: await Order.countDocuments({
         ...orderMatch,
         orderStatus: { $in: [ORDER_STATUS.confirmed, ORDER_STATUS.processing] },
@@ -446,7 +518,9 @@ const getAdminAnalyticsFromDB = async (
       failedTrend: toNamedCounts(failedPaymentTrend),
       methodSummary: toNamedCounts(paymentMethodRows),
       statusSummary: toNamedCounts(paymentStatusRows),
-      successRate: totalOrders ? Math.round((paidOrders / totalOrders) * 100) : 0,
+      successRate: totalOrders
+        ? Math.round((paidOrders / totalOrders) * 100)
+        : 0,
     },
     products: {
       lowStock: lowStock.map((product) => {
@@ -482,7 +556,9 @@ const getAdminAnalyticsFromDB = async (
             ? String(review.product.name)
             : undefined;
         const userName =
-          typeof review.user === 'object' && review.user !== null && 'name' in review.user
+          typeof review.user === 'object' &&
+          review.user !== null &&
+          'name' in review.user
             ? String(review.user.name)
             : undefined;
 
@@ -497,7 +573,9 @@ const getAdminAnalyticsFromDB = async (
     },
     sales: {
       trend: revenueTrend.map((row) => ({
-        averageOrderValue: row.orders ? Math.round(row.revenue / row.orders) : 0,
+        averageOrderValue: row.orders
+          ? Math.round(row.revenue / row.orders)
+          : 0,
         orders: row.orders,
         paidRevenue: row.paidRevenue,
         period: row._id,

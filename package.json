@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed:artist-brushes": "tsx src/app/seed/seedArtistBrushes.ts",
+    "seed:super-admin": "tsx src/app/seed/seedSuperAdmin.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prettier": "prettier --ignore-path .prettierignore --write \"src/**/*.+(js|ts|json)\"",

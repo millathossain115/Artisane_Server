@@ -3,7 +3,7 @@ import config from '../../config/index.js';
 import catchAsync from '../../utils/catchAsync.js';
 import sendResponse from '../../utils/sendResponse.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
-import { USER_ROLE } from '../user/user.constant.js';
+import { isAdminRole } from '../user/user.constant.js';
 import { OrderServices } from './order.service.js';
 
 const getPaymentCallbackPayload = (req: {
@@ -82,7 +82,7 @@ const getSingleOrder = catchAsync(async (req, res) => {
 
   const result = await OrderServices.getSingleOrderFromDB(
     id,
-    req.user?.role === USER_ROLE.admin ? undefined : req.user?.userId,
+    isAdminRole(req.user?.role) ? undefined : req.user?.userId,
   );
 
   if (!result) {
