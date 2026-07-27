@@ -33,7 +33,7 @@ router.get(
 );
 router.post(
   '/:id/shipment',
-  auth(USER_ROLE.admin),
+  auth(USER_ROLE.super_admin),
   validateRequest(OrderValidations.createShipmentValidationSchema),
   OrderControllers.createShipment,
 );
