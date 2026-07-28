@@ -4,9 +4,9 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
-import { Category } from '../category/category.model.js';
 import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
+import { Category } from '../category/category.model.js';
 import type { IProduct } from './product.interface.js';
 import { Product } from './product.model.js';
 import { buildProductAggregationPipeline } from './product.queryBuilder.js';
@@ -133,16 +133,20 @@ const updateProductIntoDB = async (
     await ActivityLogServices.recordActivity({
       ...activityContext,
       action: 'product.updated',
-      changes: ActivityLogServices.buildActivityChanges(existingProduct, result, [
-        'name',
-        'slug',
-        'description',
-        'price',
-        'stock',
-        'category',
-        'brand',
-        'images',
-      ]),
+      changes: ActivityLogServices.buildActivityChanges(
+        existingProduct,
+        result,
+        [
+          'name',
+          'slug',
+          'description',
+          'price',
+          'stock',
+          'category',
+          'brand',
+          'images',
+        ],
+      ),
       module: 'products',
       severity: 'low',
       status: 'success',

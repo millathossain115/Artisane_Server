@@ -1,6 +1,6 @@
-import { User } from '../user/user.model.js';
 import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
+import { User } from '../user/user.model.js';
 import type { IAddress } from './address.model.js';
 import { Address } from './address.model.js';
 
@@ -66,7 +66,10 @@ export const updateAddress = async (
   payload: Partial<IAddress>,
   activityContext?: IActivityLogContext,
 ) => {
-  const existingAddress = await Address.findOne({ _id: addressId, user: userId });
+  const existingAddress = await Address.findOne({
+    _id: addressId,
+    user: userId,
+  });
 
   if (payload.isDefault) {
     await unsetOtherDefaults(userId);
@@ -88,15 +91,19 @@ export const updateAddress = async (
       action: 'address.updated',
       actorId: userId,
       actorRole: activityContext?.actorRole ?? 'user',
-      changes: ActivityLogServices.buildActivityChanges(existingAddress, updated, [
-        'label',
-        'recipientName',
-        'phone',
-        'streetAddress',
-        'city',
-        'postalCode',
-        'isDefault',
-      ]),
+      changes: ActivityLogServices.buildActivityChanges(
+        existingAddress,
+        updated,
+        [
+          'label',
+          'recipientName',
+          'phone',
+          'streetAddress',
+          'city',
+          'postalCode',
+          'isDefault',
+        ],
+      ),
       module: 'users',
       severity: 'low',
       source: activityContext?.source ?? 'user',
@@ -157,7 +164,10 @@ export const setDefaultAddress = async (
   addressId: string,
   activityContext?: IActivityLogContext,
 ) => {
-  const existingAddress = await Address.findOne({ _id: addressId, user: userId });
+  const existingAddress = await Address.findOne({
+    _id: addressId,
+    user: userId,
+  });
   await unsetOtherDefaults(userId);
   const updated = await Address.findOneAndUpdate(
     { _id: addressId, user: userId },
@@ -172,9 +182,11 @@ export const setDefaultAddress = async (
       action: 'address.default_updated',
       actorId: userId,
       actorRole: activityContext?.actorRole ?? 'user',
-      changes: ActivityLogServices.buildActivityChanges(existingAddress, updated, [
-        'isDefault',
-      ]),
+      changes: ActivityLogServices.buildActivityChanges(
+        existingAddress,
+        updated,
+        ['isDefault'],
+      ),
       module: 'users',
       severity: 'low',
       source: activityContext?.source ?? 'user',

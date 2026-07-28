@@ -1,3 +1,4 @@
+import type { PipelineStage } from 'mongoose';
 import AppError from '../../errors/appError.js';
 import {
   buildPaginationMeta,
@@ -5,7 +6,6 @@ import {
 } from '../../utils/pagination.js';
 import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
-import type { PipelineStage } from 'mongoose';
 import type { ICategory } from './category.interface.js';
 import { Category } from './category.model.js';
 
@@ -168,7 +168,10 @@ const updateCategoryIntoDB = async (
   payload: Partial<ICategory>,
   activityContext?: IActivityLogContext,
 ) => {
-  const existingCategory = await Category.findOne({ _id: id, isDeleted: false });
+  const existingCategory = await Category.findOne({
+    _id: id,
+    isDeleted: false,
+  });
 
   if (!existingCategory) {
     return null;
@@ -205,12 +208,11 @@ const updateCategoryIntoDB = async (
     await ActivityLogServices.recordActivity({
       ...activityContext,
       action: 'category.updated',
-      changes: ActivityLogServices.buildActivityChanges(existingCategory, result, [
-        'name',
-        'slug',
-        'description',
-        'image',
-      ]),
+      changes: ActivityLogServices.buildActivityChanges(
+        existingCategory,
+        result,
+        ['name', 'slug', 'description', 'image'],
+      ),
       module: 'categories',
       severity: 'low',
       status: 'success',
