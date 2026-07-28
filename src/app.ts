@@ -20,12 +20,8 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Artisane Server is running');
 });
 
-app.use(
-  /^\/(?:api\/v1\/)?(?:activity-logs|analytics|addresses|auth|users|categories|dashboard|delivery|payment-logs|products|orders|locations|reviews|wishlists|promos|home-content)(?:\/|$)/,
-  ensureDatabaseConnected,
-);
-app.use('/api/v1', router);
-app.use(router);
+app.use('/api/v1', ensureDatabaseConnected, router);
+app.use(ensureDatabaseConnected, router);
 app.use(notFoundRoute);
 app.use(globalErrorHandler);
 
