@@ -26,6 +26,25 @@ router.post(
   AuthControllers.googleLogin,
 );
 
+router.post(
+  '/forgot-password',
+  validateRequest(AuthValidations.forgotPasswordValidationSchema),
+  AuthControllers.forgotPassword,
+);
+
+router.post(
+  '/reset-password',
+  validateRequest(AuthValidations.resetPasswordValidationSchema),
+  AuthControllers.resetPassword,
+);
+
+router.patch(
+  '/change-password',
+  auth(USER_ROLE.admin, USER_ROLE.user),
+  validateRequest(AuthValidations.changePasswordValidationSchema),
+  AuthControllers.changePassword,
+);
+
 router.get('/me', auth(USER_ROLE.admin, USER_ROLE.user), AuthControllers.getMe);
 
 router.patch(

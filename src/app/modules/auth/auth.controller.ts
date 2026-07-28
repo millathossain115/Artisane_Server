@@ -123,6 +123,140 @@ const googleLogin = catchAsync(async (req, res) => {
   }
 });
 
+const forgotPassword = catchAsync(async (req, res) => {
+  try {
+    const result = await AuthServices.forgotPassword(req.body);
+
+    if (result.emailSent && result.user) {
+      await ActivityLogServices.recordActivity({
+        ...ActivityLogServices.createActivityContext(req, 'user'),
+        action: 'user.password_reset_requested',
+        actorEmail: result.user.email,
+        actorId: result.user._id.toString(),
+        actorName: result.user.name,
+        actorRole: getActorRole(result.user.role),
+        module: 'auth',
+        severity: 'medium',
+        status: 'success',
+        summary: `${result.user.name} requested a password reset`,
+        targetId: result.user._id.toString(),
+        targetLabel: result.user.email,
+        targetType: 'user',
+      });
+    }
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      message: result.message,
+      data: null,
+    });
+  } catch (error) {
+    await ActivityLogServices.recordActivity({
+      ...ActivityLogServices.createActivityContext(req, 'user'),
+      action: 'user.password_reset_request_failed',
+      actorEmail:
+        typeof req.body.email === 'string' ? req.body.email : undefined,
+      actorRole: 'user',
+      metadata: { email: req.body.email },
+      module: 'auth',
+      severity: 'medium',
+      status: 'failed',
+      summary: 'Failed password reset request',
+      targetLabel:
+        typeof req.body.email === 'string' ? req.body.email : undefined,
+      targetType: 'user',
+    });
+    throw error;
+  }
+});
+
+const resetPassword = catchAsync(async (req, res) => {
+  try {
+    const result = await AuthServices.resetPassword(req.body);
+
+    await ActivityLogServices.recordActivity({
+      ...ActivityLogServices.createActivityContext(req, 'user'),
+      action: 'user.password_reset_completed',
+      actorEmail: result.email,
+      actorId: result._id.toString(),
+      actorName: result.name,
+      actorRole: getActorRole(result.role),
+      module: 'auth',
+      severity: 'medium',
+      status: 'success',
+      summary: `${result.name} reset their password`,
+      targetId: result._id.toString(),
+      targetLabel: result.email,
+      targetType: 'user',
+    });
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      message: 'Password reset successfully',
+      data: null,
+    });
+  } catch (error) {
+    await ActivityLogServices.recordActivity({
+      ...ActivityLogServices.createActivityContext(req, 'user'),
+      action: 'user.password_reset_failed',
+      actorRole: 'user',
+      module: 'auth',
+      severity: 'medium',
+      status: 'failed',
+      summary: 'Failed password reset attempt',
+      targetType: 'user',
+    });
+    throw error;
+  }
+});
+
+const changePassword = catchAsync(async (req, res) => {
+  try {
+    const result = await AuthServices.changePassword(req.user.userId, req.body);
+
+    await ActivityLogServices.recordActivity({
+      ...ActivityLogServices.createActivityContext(req),
+      action: 'user.password_changed',
+      actorEmail: result.email,
+      actorId: result._id.toString(),
+      actorName: result.name,
+      actorRole: getActorRole(result.role),
+      module: 'auth',
+      severity: 'medium',
+      status: 'success',
+      summary: `${result.name} changed their password`,
+      targetId: result._id.toString(),
+      targetLabel: result.email,
+      targetType: 'user',
+    });
+
+    sendResponse(res, {
+      statusCode: 200,
+      success: true,
+      message: 'Password changed successfully',
+      data: null,
+    });
+  } catch (error) {
+    await ActivityLogServices.recordActivity({
+      ...ActivityLogServices.createActivityContext(req),
+      action: 'user.password_change_failed',
+      actorEmail: req.user.email,
+      actorId: req.user.userId,
+      actorRole: getActorRole(req.user.role),
+      module: 'auth',
+      severity: 'medium',
+      status: 'failed',
+      summary: 'Failed password change attempt',
+      targetId: req.user.userId,
+      targetLabel: req.user.email,
+      targetType: 'user',
+    });
+    throw error;
+  }
+});
+
 const getMe = catchAsync(async (req, res) => {
   //console.log('Auth.getMe req.user: ', req.user);
   const result = await AuthServices.getMe(req.user.userId);
@@ -152,9 +286,12 @@ const updateMyProfile = catchAsync(async (req, res) => {
 });
 
 export const AuthControllers = {
+  changePassword,
+  forgotPassword,
   registerUser,
   loginUser,
   googleLogin,
+  resetPassword,
   getMe,
   updateMyProfile,
 };

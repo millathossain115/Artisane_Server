@@ -8,6 +8,9 @@ export interface IUser {
   name: string;
   email: string;
   password?: string;
+  passwordChangedAt?: Date;
+  passwordResetExpiresAt?: Date;
+  passwordResetTokenHash?: string;
   phone?: string;
   alternativePhone?: string;
   dateOfBirth?: Date;

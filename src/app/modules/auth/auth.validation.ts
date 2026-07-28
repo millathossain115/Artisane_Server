@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  isMediumPassword,
+  PASSWORD_POLICY_MESSAGE,
+} from '../../utils/passwordPolicy.js';
 
 const genderValidationSchema = z.enum([
   'female',
@@ -19,6 +23,12 @@ const dateOfBirthValidationSchema = z.preprocess(
   z.date({ message: 'Date of birth must be a valid date' }).optional(),
 );
 
+const passwordValidationSchema = z
+  .string()
+  .min(8, { message: PASSWORD_POLICY_MESSAGE })
+  .max(100, { message: PASSWORD_POLICY_MESSAGE })
+  .refine(isMediumPassword, { message: PASSWORD_POLICY_MESSAGE });
+
 const registerUserValidationSchema = z.object({
   name: z
     .string()
@@ -30,10 +40,7 @@ const registerUserValidationSchema = z.object({
     .email({ message: 'Please provide a valid email address' })
     .trim()
     .transform((value: string) => value.toLowerCase()),
-  password: z
-    .string()
-    .min(6, { message: 'Password must be at least 6 characters' })
-    .max(100, { message: 'Password cannot exceed 100 characters' }),
+  password: passwordValidationSchema,
   phone: z
     .string()
     .trim()
@@ -56,6 +63,24 @@ const googleAuthValidationSchema = z.object({
     .string()
     .trim()
     .min(1, { message: 'Google credential is required' }),
+});
+
+const forgotPasswordValidationSchema = z.object({
+  email: z
+    .string()
+    .email({ message: 'Please provide a valid email address' })
+    .trim()
+    .transform((value: string) => value.toLowerCase()),
+});
+
+const resetPasswordValidationSchema = z.object({
+  password: passwordValidationSchema,
+  token: z.string().trim().min(1, { message: 'Reset token is required' }),
+});
+
+const changePasswordValidationSchema = z.object({
+  currentPassword: z.string().min(1, { message: 'Current password is required' }),
+  newPassword: passwordValidationSchema,
 });
 
 const updateMyProfileValidationSchema = z
@@ -107,5 +132,8 @@ export const AuthValidations = {
   registerUserValidationSchema,
   loginUserValidationSchema,
   googleAuthValidationSchema,
+  forgotPasswordValidationSchema,
+  resetPasswordValidationSchema,
+  changePasswordValidationSchema,
   updateMyProfileValidationSchema,
 };

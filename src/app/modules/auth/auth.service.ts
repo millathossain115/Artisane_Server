@@ -1,10 +1,12 @@
 import bcrypt from 'bcrypt';
+import crypto from 'node:crypto';
 import type { Express } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt, { type Secret, type SignOptions } from 'jsonwebtoken';
 import AppError from '../../errors/appError.js';
 import config from '../../config/index.js';
 import { uploadImageToCloudinary } from '../../utils/cloudinary.js';
+import { sendPasswordResetEmail } from '../../utils/email.js';
 import { USER_STATUS } from '../user/user.constant.js';
 import type { TUserStatus } from '../user/user.interface.js';
 import { User } from '../user/user.model.js';
@@ -12,15 +14,33 @@ import { UserServices } from '../user/user.service.js';
 import { ActivityLogServices } from '../activityLog/activityLog.service.js';
 import type { IActivityLogContext } from '../activityLog/activityLog.interface.js';
 import type {
+  IChangePasswordPayload,
   IAuthResponse,
+  IForgotPasswordPayload,
   IGoogleAuthPayload,
   IJwtPayload,
   ILoginUser,
   IRegisterUser,
+  IResetPasswordPayload,
   IUpdateMyProfile,
 } from './auth.interface.js';
 
 const googleClient = new OAuth2Client();
+const PASSWORD_RESET_SUCCESS_MESSAGE =
+  'If an account exists, reset instructions were sent.';
+
+const hashPassword = async (password: string) => {
+  return bcrypt.hash(password, Number(config.bcrypt_salt_rounds) || 10);
+};
+
+const hashResetToken = (token: string) => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
+
+const createResetLink = (token: string) => {
+  const frontendUrl = config.frontend_url.replace(/\/$/, '');
+  return `${frontendUrl}/reset-password?token=${token}`;
+};
 
 const createToken = (
   jwtPayload: IJwtPayload,
@@ -110,6 +130,143 @@ const registerUserIntoDB = async (
   const createdUser = await UserServices.createUserIntoDB(payload);
 
   return buildAuthResponse(createdUser);
+};
+
+const forgotPassword = async (payload: IForgotPasswordPayload) => {
+  const user = await User.findOne({
+    email: payload.email,
+    isDeleted: false,
+    status: USER_STATUS.active,
+  });
+
+  if (!user) {
+    return {
+      emailSent: false,
+      message: PASSWORD_RESET_SUCCESS_MESSAGE,
+    };
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const passwordResetTokenHash = hashResetToken(rawToken);
+  const passwordResetExpiresAt = new Date(
+    Date.now() +
+      Math.max(config.password_reset_expires_minutes || 15, 1) * 60 * 1000,
+  );
+
+  await User.updateOne(
+    { _id: user._id },
+    {
+      passwordResetExpiresAt,
+      passwordResetTokenHash,
+    },
+  );
+
+  try {
+    await sendPasswordResetEmail(
+      user.email,
+      user.name,
+      createResetLink(rawToken),
+    );
+  } catch (error) {
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $unset: {
+          passwordResetExpiresAt: '',
+          passwordResetTokenHash: '',
+        },
+      },
+    );
+    throw error;
+  }
+
+  return {
+    emailSent: true,
+    message: PASSWORD_RESET_SUCCESS_MESSAGE,
+    user,
+  };
+};
+
+const resetPassword = async (payload: IResetPasswordPayload) => {
+  const user = await User.findOne({
+    isDeleted: false,
+    passwordResetExpiresAt: { $gt: new Date() },
+    passwordResetTokenHash: hashResetToken(payload.token),
+  }).select('+passwordResetExpiresAt +passwordResetTokenHash');
+
+  if (!user) {
+    throw new AppError(400, 'Password reset link is invalid or expired');
+  }
+
+  if (user.status === USER_STATUS.blocked) {
+    throw new AppError(401, 'You are not authorized!');
+  }
+
+  const updatedUser = await User.findOneAndUpdate(
+    { _id: user._id },
+    {
+      $set: {
+        password: await hashPassword(payload.password),
+        passwordChangedAt: new Date(),
+      },
+      $unset: {
+        passwordResetExpiresAt: '',
+        passwordResetTokenHash: '',
+      },
+    },
+    {
+      returnDocument: 'after',
+      runValidators: true,
+    },
+  );
+
+  return updatedUser || user;
+};
+
+const changePassword = async (
+  userId: string,
+  payload: IChangePasswordPayload,
+) => {
+  const user = await User.findOne({ _id: userId, isDeleted: false }).select(
+    '+password',
+  );
+
+  if (!user || user.status === USER_STATUS.blocked) {
+    throw new AppError(401, 'You are not authorized!');
+  }
+
+  if (!user.password) {
+    throw new AppError(400, 'Use forgot password to set a password first');
+  }
+
+  const isPasswordMatched = await bcrypt.compare(
+    payload.currentPassword,
+    user.password,
+  );
+
+  if (!isPasswordMatched) {
+    throw new AppError(401, 'Current password does not match');
+  }
+
+  const updatedUser = await User.findOneAndUpdate(
+    { _id: user._id },
+    {
+      $set: {
+        password: await hashPassword(payload.newPassword),
+        passwordChangedAt: new Date(),
+      },
+      $unset: {
+        passwordResetExpiresAt: '',
+        passwordResetTokenHash: '',
+      },
+    },
+    {
+      returnDocument: 'after',
+      runValidators: true,
+    },
+  );
+
+  return updatedUser || user;
 };
 
 const loginUser = async (payload: ILoginUser): Promise<IAuthResponse> => {
@@ -290,9 +447,12 @@ const updateMyProfileIntoDB = async (
 };
 
 export const AuthServices = {
+  changePassword,
+  forgotPassword,
   registerUserIntoDB,
   loginUser,
   loginWithGoogle,
+  resetPassword,
   getMe,
   updateMyProfileIntoDB,
 };

@@ -1,5 +1,9 @@
 import { USER_ROLE, USER_STATUS } from './user.constant.js';
 import { z } from 'zod';
+import {
+  isMediumPassword,
+  PASSWORD_POLICY_MESSAGE,
+} from '../../utils/passwordPolicy.js';
 
 const createUserValidationSchema = z.object({
   name: z
@@ -13,8 +17,9 @@ const createUserValidationSchema = z.object({
     .toLowerCase(),
   password: z
     .string()
-    .min(6, { message: 'Password must be at least 6 characters' })
-    .max(100, { message: 'Password cannot exceed 100 characters' }),
+    .min(8, { message: PASSWORD_POLICY_MESSAGE })
+    .max(100, { message: PASSWORD_POLICY_MESSAGE })
+    .refine(isMediumPassword, { message: PASSWORD_POLICY_MESSAGE }),
   phone: z
     .string()
     .trim()

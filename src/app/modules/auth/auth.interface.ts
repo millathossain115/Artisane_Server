@@ -29,6 +29,20 @@ export interface ILoginUser {
   password: string;
 }
 
+export interface IForgotPasswordPayload {
+  email: string;
+}
+
+export interface IResetPasswordPayload {
+  password: string;
+  token: string;
+}
+
+export interface IChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface IGoogleAuthPayload {
   credential: string;
 }

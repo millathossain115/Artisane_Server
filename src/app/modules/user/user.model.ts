@@ -18,7 +18,18 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      minlength: [6, 'Password must be at least 6 characters'],
+      minlength: [8, 'Password must be at least 8 characters'],
+      select: false,
+    },
+    passwordChangedAt: {
+      type: Date,
+    },
+    passwordResetExpiresAt: {
+      type: Date,
+      select: false,
+    },
+    passwordResetTokenHash: {
+      type: String,
       select: false,
     },
     phone: {
@@ -72,12 +83,16 @@ const userSchema = new Schema<IUser>(
     toJSON: {
       transform: (_doc, ret) => {
         delete ret.password;
+        delete ret.passwordResetExpiresAt;
+        delete ret.passwordResetTokenHash;
         return ret;
       },
     },
     toObject: {
       transform: (_doc, ret) => {
         delete ret.password;
+        delete ret.passwordResetExpiresAt;
+        delete ret.passwordResetTokenHash;
         return ret;
       },
     },

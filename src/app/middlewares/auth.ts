@@ -43,6 +43,16 @@ const auth = (...requiredRoles: TUserRole[]) => {
       throw new AppError(401, 'You are not authorized!');
     }
 
+    const issuedAt = (decoded as IJwtPayload & { iat?: number }).iat;
+
+    if (
+      user.passwordChangedAt &&
+      issuedAt &&
+      issuedAt * 1000 < user.passwordChangedAt.getTime()
+    ) {
+      throw new AppError(401, 'You are not authorized!');
+    }
+
     const userRole = user.role || USER_ROLE.user;
     const hasRequiredRole = requiredRoles.some((role) => {
       if (role === USER_ROLE.admin) {
