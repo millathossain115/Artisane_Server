@@ -1,5 +1,5 @@
 import express from 'express';
-import type { Application, Request, Response } from 'express';
+import type { Application, NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import { openApiDocument } from './app/docs/openapi.js';
@@ -20,7 +20,7 @@ app.use('/uploads', express.static(uploadBaseDir));
 
 // Application routes
 app.get('/', (req: Request, res: Response) => {
-  res.redirect('/docs');
+  res.redirect('/docs/');
 });
 
 app.get('/health', (req: Request, res: Response) => {
@@ -36,6 +36,14 @@ app.get('/openapi.json', (req: Request, res: Response) => {
 
 app.use(
   '/docs',
+  (req: Request, res: Response, next: NextFunction) => {
+    if (req.originalUrl === '/docs') {
+      res.redirect('/docs/');
+      return;
+    }
+
+    next();
+  },
   swaggerUi.serve,
   swaggerUi.setup(openApiDocument, swaggerUiOptions),
 );
