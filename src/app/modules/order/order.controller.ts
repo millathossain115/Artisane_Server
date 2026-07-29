@@ -16,11 +16,77 @@ const getPaymentCallbackPayload = (req: {
   };
 };
 
+const getFrontendOrigin = (value?: string) => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return null;
+    }
+
+    return url.origin;
+  } catch {
+    return null;
+  }
+};
+
+const isAllowedFrontendOrigin = (origin: string) => {
+  const configuredOrigin = getFrontendOrigin(config.frontend_url);
+
+  if (origin === configuredOrigin) {
+    return true;
+  }
+
+  const { hostname } = new URL(origin);
+
+  if (hostname.endsWith('.vercel.app')) {
+    return true;
+  }
+
+  return (
+    config.node_env !== 'production' &&
+    ['localhost', '127.0.0.1'].includes(hostname)
+  );
+};
+
+const getValidFrontendUrl = (value?: string) => {
+  const origin = getFrontendOrigin(value);
+
+  if (!origin || !isAllowedFrontendOrigin(origin)) {
+    return config.frontend_url;
+  }
+
+  return origin;
+};
+
+const getRequestFrontendUrl = (req: {
+  get(name: string): string | undefined;
+}) => {
+  const origin = getValidFrontendUrl(req.get('origin'));
+
+  if (origin !== config.frontend_url) {
+    return origin;
+  }
+
+  const referer = req.get('referer');
+
+  if (referer) {
+    return getValidFrontendUrl(referer);
+  }
+
+  return origin;
+};
+
 const buildPaymentRedirectUrl = (
   status: 'success' | 'fail' | 'cancel',
   transactionId?: string,
+  frontendUrl?: string,
 ) => {
-  const url = new URL(`/payment/${status}`, config.frontend_url);
+  const url = new URL(`/payment/${status}`, getValidFrontendUrl(frontendUrl));
 
   if (transactionId) {
     url.searchParams.set('transactionId', transactionId);
@@ -31,10 +97,12 @@ const buildPaymentRedirectUrl = (
 
 const createOrder = catchAsync(async (req, res) => {
   const serverBaseUrl = `${req.protocol}://${req.get('host')}`;
+  const frontendBaseUrl = getRequestFrontendUrl(req);
   const result = await OrderServices.createOrderIntoDB(
     req.user.userId,
     req.body,
     serverBaseUrl,
+    frontendBaseUrl,
     ActivityLogServices.createActivityContext(req),
   );
 
@@ -183,6 +251,7 @@ const sslcommerzSuccess = catchAsync(async (req, res) => {
     buildPaymentRedirectUrl(
       'success',
       typeof payload.tran_id === 'string' ? payload.tran_id : undefined,
+      typeof payload.value_b === 'string' ? payload.value_b : undefined,
     ),
   );
 });
@@ -199,6 +268,7 @@ const sslcommerzFail = catchAsync(async (req, res) => {
     buildPaymentRedirectUrl(
       'fail',
       typeof payload.tran_id === 'string' ? payload.tran_id : undefined,
+      typeof payload.value_b === 'string' ? payload.value_b : undefined,
     ),
   );
 });
@@ -215,6 +285,7 @@ const sslcommerzCancel = catchAsync(async (req, res) => {
     buildPaymentRedirectUrl(
       'cancel',
       typeof payload.tran_id === 'string' ? payload.tran_id : undefined,
+      typeof payload.value_b === 'string' ? payload.value_b : undefined,
     ),
   );
 });

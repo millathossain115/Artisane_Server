@@ -143,6 +143,7 @@ const initiateSslcommerzPayment = async (
     postalCode?: string;
   },
   serverBaseUrl: string,
+  frontendBaseUrl: string,
 ) => {
   const { storeId, storePassword } = getSslcommerzCredentials();
   const transactionId = order.transactionId;
@@ -197,6 +198,7 @@ const initiateSslcommerzPayment = async (
     discount_amount: '0',
     convenience_fee: '0',
     value_a: order._id.toString(),
+    value_b: frontendBaseUrl,
   });
 
   const gateway = PAYMENT_METHOD_GATEWAYS[order.paymentMethod || ''];
@@ -393,6 +395,7 @@ const createOrderIntoDB = async (
   userId: string,
   payload: ICreateOrderPayload,
   serverBaseUrl: string,
+  frontendBaseUrl: string,
   activityContext?: IActivityLogContext,
 ) => {
   const user = await User.findOne({ _id: userId, isDeleted: false });
@@ -533,6 +536,7 @@ const createOrderIntoDB = async (
       createdOrder,
       user,
       serverBaseUrl,
+      frontendBaseUrl,
     );
 
     return {

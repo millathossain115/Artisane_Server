@@ -12,7 +12,10 @@ export default {
   jwt_refresh_secret: process.env.JWT_REFRESH_SECRET,
   jwt_access_expires_in: process.env.JWT_ACCESS_EXPIRES_IN,
   jwt_refresh_expires_in: process.env.JWT_REFRESH_EXPIRES_IN,
-  frontend_url: process.env.FRONTEND_URL || 'http://localhost:5173',
+  frontend_url:
+    process.env.FRONTEND_URL ||
+    process.env.CLIENT_URL ||
+    'http://localhost:5173',
   password_reset_expires_minutes: Number(
     process.env.PASSWORD_RESET_EXPIRES_MINUTES || 15,
   ),
