@@ -1,9 +1,12 @@
 import express from 'express';
 import type { Application, NextFunction, Request, Response } from 'express';
 import cors from 'cors';
-import swaggerUi from 'swagger-ui-express';
 import { openApiDocument } from './app/docs/openapi.js';
-import { swaggerUiOptions } from './app/docs/swaggerTheme.js';
+import {
+  renderSwaggerHtml,
+  renderSwaggerInitScript,
+  swaggerUiDistUrl,
+} from './app/docs/swaggerTheme.js';
 import ensureDatabaseConnected from './app/middlewares/ensureDatabaseConnected.js';
 import globalErrorHandler from './app/middlewares/globalErrorHandler.js';
 import notFoundRoute from './app/middlewares/notFoundRoute.js';
@@ -42,10 +45,29 @@ app.use(
       return;
     }
 
+    if (req.path === '/swagger-ui-init.js') {
+      res.type('application/javascript').send(renderSwaggerInitScript());
+      return;
+    }
+
+    if (
+      [
+        '/swagger-ui.css',
+        '/swagger-ui-bundle.js',
+        '/swagger-ui-standalone-preset.js',
+        '/favicon-16x16.png',
+        '/favicon-32x32.png',
+      ].includes(req.path)
+    ) {
+      res.redirect(`${swaggerUiDistUrl}${req.path}`);
+      return;
+    }
+
     next();
   },
-  swaggerUi.serve,
-  swaggerUi.setup(openApiDocument, swaggerUiOptions),
+  (req: Request, res: Response) => {
+    res.type('html').send(renderSwaggerHtml());
+  },
 );
 app.use('/api/v1', ensureDatabaseConnected, router);
 app.use(ensureDatabaseConnected, router);

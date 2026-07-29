@@ -66,6 +66,10 @@ export const swaggerUiOptions = {
       margin: 0 0 16px;
     }
 
+    .swagger-ui .info .base-url {
+      display: none;
+    }
+
     .swagger-ui .info .title small,
     .swagger-ui .info .title small.version-stamp {
       top: -8px;
@@ -415,3 +419,53 @@ export const swaggerUiOptions = {
     }
   `,
 };
+
+export const swaggerUiDistUrl = 'https://unpkg.com/swagger-ui-dist@5.32.11';
+
+export const renderSwaggerInitScript = () => `
+window.onload = function () {
+  window.ui = SwaggerUIBundle({
+    url: '/openapi.json',
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIStandalonePreset
+    ],
+    plugins: [
+      SwaggerUIBundle.plugins.DownloadUrl
+    ],
+    layout: 'StandaloneLayout',
+    validatorUrl: null
+  });
+};
+`;
+
+export const renderSwaggerHtml = () => `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${swaggerUiOptions.customSiteTitle}</title>
+    <link
+      rel="stylesheet"
+      href="${swaggerUiDistUrl}/swagger-ui.css"
+    />
+    <style>
+      body {
+        margin: 0;
+        background: #101414;
+      }
+
+      ${swaggerUiOptions.customCss}
+    </style>
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="${swaggerUiDistUrl}/swagger-ui-bundle.js"></script>
+    <script src="${swaggerUiDistUrl}/swagger-ui-standalone-preset.js"></script>
+    <script>
+      ${renderSwaggerInitScript()}
+    </script>
+  </body>
+</html>`;
