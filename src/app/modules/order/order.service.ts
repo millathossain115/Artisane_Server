@@ -5,6 +5,7 @@ import {
   buildPaginationMeta,
   calculatePagination,
 } from '../../utils/pagination.js';
+import { sendOrderInvoiceEmail } from '../../utils/email.js';
 import { createPaymentLog } from '../paymentLog/paymentLog.service.js';
 import { Product } from '../product/product.model.js';
 import { PromoBanner } from '../promo/promo.model.js';
@@ -514,6 +515,14 @@ const createOrderIntoDB = async (
     targetLabel: getOrderLogLabel(createdOrder),
     targetType: 'order',
   });
+
+  if (result) {
+    try {
+      await sendOrderInvoiceEmail(result);
+    } catch (error) {
+      console.error('Order invoice email failed:', error);
+    }
+  }
 
   if (
     result &&
