@@ -1,6 +1,9 @@
 import express from 'express';
 import type { Application, Request, Response } from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
+import { openApiDocument } from './app/docs/openapi.js';
+import { swaggerUiOptions } from './app/docs/swaggerTheme.js';
 import ensureDatabaseConnected from './app/middlewares/ensureDatabaseConnected.js';
 import globalErrorHandler from './app/middlewares/globalErrorHandler.js';
 import notFoundRoute from './app/middlewares/notFoundRoute.js';
@@ -17,9 +20,25 @@ app.use('/uploads', express.static(uploadBaseDir));
 
 // Application routes
 app.get('/', (req: Request, res: Response) => {
-  res.send('Artisane Server is running');
+  res.redirect('/docs');
 });
 
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'Artisane Server is running',
+  });
+});
+
+app.get('/openapi.json', (req: Request, res: Response) => {
+  res.status(200).json(openApiDocument);
+});
+
+app.use(
+  '/docs',
+  swaggerUi.serve,
+  swaggerUi.setup(openApiDocument, swaggerUiOptions),
+);
 app.use('/api/v1', ensureDatabaseConnected, router);
 app.use(ensureDatabaseConnected, router);
 app.use(notFoundRoute);
